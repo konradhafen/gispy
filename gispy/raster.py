@@ -2,8 +2,10 @@ from osgeo import gdal, ogr, osr
 import numpy as np
 import vector
 from scipy import stats
-import rasterstats
 import os
+
+def raster_test():
+    return "this is the raster module of the gispy package"
 
 def clipByFeature(inputdir, outputdir, rasterfiles, shapefile, fieldname, nodata=-9999, xres=None, yres=None):
     """

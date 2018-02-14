@@ -1,5 +1,8 @@
 from osgeo import ogr
 
+def vector_test():
+    return "this is the vector module of the gispy package"
+
 def createFields(lyr, fieldnames, fieldtype = ogr.OFTReal):
     """
     Add fields to a shapefile layer
