@@ -7,9 +7,11 @@ setup(name='gispy',
       author='Konrad Hafen',
       author_email='khafen74@gmail.com',
       license='GPLv3',
+      packages=['gispy'],
       install_requires=[
             'gdal',
             'numpy',
             'scipy',
+            'rasterstats',
       ],
       zip_safe=False)
