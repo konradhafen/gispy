@@ -1,4 +1,5 @@
-from osgeo import ogr
+from osgeo import ogr, osr
+import os
 import geopandas as gpd
 
 def vector_test():
@@ -23,6 +24,24 @@ def createFields(lyr, fieldnames, fieldtype = ogr.OFTReal):
         if index is not -1: lyr.DeleteField(index)
         lyr.CreateField(field)
     return lyr
+
+def copyFields(lyr, lyrdefn):
+    for i in range(0, lyrdefn.GetFieldCount()):
+        fldefn = lyrdefn.GetFieldDefn(i)
+        lyr.CreateField(fldefn)
+    return lyr
+
+def copyFieldValues(newfeat, copyfeat, defn):
+    for i in range(0, defn.GetFieldCount()):
+        newfeat.SetField(defn.GetFieldDefn(i).GetNameRef(), copyfeat.GetField(i))
+
+def createOGRDataSource(filename, driver='ESRI Shapefile', layertype=ogr.wkbPoint, srs=None ):
+    driver = ogr.GetDriverByName(driver)
+    if os.path.exists(filename):
+        driver.DeleteDataSource(filename)
+    ds = driver.CreateDataSource(filename)
+    lyr = ds.CreateLayer(os.path.split(filename)[0], srs=srs, geom_type=layertype)
+    return ds, lyr
 
 def getFieldValues(dataset, fieldName):
     """
@@ -92,3 +111,32 @@ def fieldExists(lyr, fieldname):
         return True
     else:
         return False
+
+def openOGRDataSource(file, access=0):
+    ds = ogr.Open(file, access)
+    if ds is not None:
+        return ds
+    else:
+        print 'Problem opening shapefile'
+
+def reprojectShapefileLayer(shapefile, newshapefile, newsrs):
+    ds = openOGRDataSource(shapefile)
+    layer = ds.GetLayer()
+    srs = layer.GetSpatialRef()
+    transform = osr.CoordinateTransformation(srs, newsrs)
+
+    outds, outlyr = createOGRDataSource(newshapefile, srs=newsrs, layertype=layer.GetGeomType())
+    copyFields(outlyr, layer.GetLayerDefn())
+    defn = outlyr.GetLayerDefn()
+    feat = layer.GetNextFeature()
+    while feat:
+        geom = feat.GetGeometryRef()
+        geom.Transform(transform)
+        outfeat = ogr.Feature(defn)
+        outfeat.SetGeometry(geom)
+        copyFieldValues(outfeat, feat, defn)
+        outlyr.CreateFeature(outfeat)
+        outfeat = None
+        feat = layer.GetNextFeature()
+    ds = None
+    outds = None
