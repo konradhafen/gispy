@@ -103,7 +103,7 @@ def createMask(rasterPath, minValue, maxValue, band=1):
 
 def getGeoTransform(rasterPath):
     """
-    Get the affine geotransformation informatino for a raster dataset
+    Get the affine geotransformation information for a raster dataset
 
     Args:
         rasterPath: path to rater dataset
@@ -118,6 +118,33 @@ def getGeoTransform(rasterPath):
         return geot
     else:
         return None
+
+def getGeoTransformAndSize(rasterPath):
+    """
+    Get affine transformation information and the number of rows and columns for a raster dataset.
+
+    Args:
+        rasterPath: Path to raster dataset.
+
+    Returns:
+        int, int, list: number of rows, number of columns, geotransform (six item list)
+
+    """
+    geot = getGeoTransform(rasterPath)
+    if geot is not None:
+        ds = gdal.Open(rasterPath)
+        if ds is not None:
+            rows = ds.RasterYSize
+            cols = ds.RasterXSize
+            return rows, cols, geot
+        else:
+            return None, None, geot
+    else:
+        return None, None, None
+
+def getProjection(rasterPath):
+    ds = openGDALRaster(rasterPath)
+    return ds.GetProjection()
 
 def getRasterAsArray(rasterPath):
     """
@@ -206,6 +233,32 @@ def maskArray(array, mask, nodata=-9999):
     """
     return np.where(mask, array, nodata)
 
+def maskRaster(rasterPath, array, nodata=-9999, band=1):
+    """
+    Replace values in a raster band with no data where another array is equal to no data
+
+    Args:
+        rasterPath: Path of raster to mask.
+        array: Array to mask with (must be same shape as array from raster).
+        nodata: No data value of array (default: -9999).
+        band: Band of raster to mask (default: 1).
+
+    Returns:
+
+    """
+    mask = np.where(array==nodata, 0, 1)
+    ds = openGDALRaster(rasterPath, gdal.GA_Update)
+    band = ds.GetRasterBand(band).ReadAsArray()
+    ds.GetRasterBand(1).WriteArray(maskArray(band, mask, nodata))
+    ds.GetRasterBand.SetNoDataValue(nodata)
+    ds = None
+    return None
+
+def openGDALRaster(rasterPath, access=gdal.GA_ReadOnly):
+    ds = gdal.Open(rasterPath, access)
+    if ds is not None:
+        return ds
+
 def percentileMultiband(multi, index):
     """
     Calculate the percentile of a specified value at a position in a multiband raster
@@ -223,35 +276,6 @@ def percentileMultiband(multi, index):
     score, idx = linearTake(multi, index) #value of index band at each row,col
     result = stats.norm.cdf(score, loc=mean, scale=sd)*100 #percentile
     return result, score
-
-def writeArrayAsGTiff(path, array, rows, cols, geot, srs, nodata=-9999, nan=-9999, type=gdal.GDT_Float32):
-    """
-    Write array to a GeoTiff raster
-
-    Args:
-        path: output file for raster
-        array: array containing data
-        rows: number of rows in array
-        cols: number of columns in array
-        geot: affine geotransformation for the output raster
-        srs: spatial reference for the output raster
-        nodata: no data value for the output raster
-        nan: value in array that should be written as nodata
-        type: gdal data type of output raster (default: GDT_Float32)
-
-    Returns:
-        None
-
-    """
-    ds = gdal.GetDriverByName("GTiff").Create(path, xsize=cols, ysize=rows, bands=1, eType=type)
-    ds.SetProjection(srs)
-    ds.SetGeoTransform(geot)
-    array = np.where((array==np.nan) | (array==nan), nodata, array)
-    ds.GetRasterBand(1).WriteArray(array)
-    ds.GetRasterBand(1).SetNoDataValue(nodata)
-    ds.GetRasterBand(1).FlushCache()
-    ds = None
-    return None
 
 def percentileOfMultibandIndex(datapath, index, percentilepath, scorepath=None, mask = None):
     """
@@ -284,4 +308,70 @@ def percentileOfMultibandIndex(datapath, index, percentilepath, scorepath=None, 
     else:
         print "problem with input index array", index.shape, multi.shape[1:]
 
+    return None
+
+def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj, allcells=False, datatype = gdal.GDT_Float32):
+    """
+    Convert polygon shapefile to raster dataset.
+
+    Args:
+        rasterpath: Path of raster to be created.
+        vectorpath: Path of polygon shapefile to rasterize.
+        fieldname: Name of shapefile field to use as values in new raster.
+        rows: Number of rows in new raster.
+        cols: Number of columns in new raster.
+        geot: Affine geotransform of new raster.
+        prj: Spatial reference of new raster.
+        allcells: If all cells intersected by polygons should be rasterized, or just when polygon includes cell center (defaul: False)
+        datatype: GDAL datatype of new raster (default: gdal.GDT_Float32)
+
+    Returns:
+
+    """
+    inds = ogr.Open(vectorpath)
+    lyr = inds.GetLayer()
+    outds = gdal.GetDriverByName('GTiff').Create(rasterpath, cols, rows, 1, datatype)
+    outds.SetProjection(prj)
+    outds.SetGeoTransform(geot)
+
+    ALL_TOUCHED = 'FALSE'
+    if allcells: ALL_TOUCHED = 'TRUE'
+
+    if vector.fieldExists(lyr, fieldname):
+        status = gdal.RasterizeLayer(outds, [1], lyr, options=['ALL_TOUCHED='+ALL_TOUCHED, 'ATTRIBUTE='+fieldname])
+        if status is not 0:
+            print "Rasterize not successful"
+    else:
+        print "Rasterize field does not exist"
+
+    outds = None
+    return None
+
+def writeArrayAsGTiff(path, array, rows, cols, geot, srs, nodata=-9999, nan=-9999, type=gdal.GDT_Float32):
+    """
+    Write array to a GeoTiff raster
+
+    Args:
+        path: output file for raster
+        array: array containing data
+        rows: number of rows in array
+        cols: number of columns in array
+        geot: affine geotransformation for the output raster
+        srs: spatial reference for the output raster
+        nodata: no data value for the output raster
+        nan: value in array that should be written as nodata
+        type: gdal data type of output raster (default: GDT_Float32)
+
+    Returns:
+        None
+
+    """
+    ds = gdal.GetDriverByName("GTiff").Create(path, xsize=cols, ysize=rows, bands=1, eType=type)
+    ds.SetProjection(srs)
+    ds.SetGeoTransform(geot)
+    array = np.where((array==np.nan) | (array==nan), nodata, array)
+    ds.GetRasterBand(1).WriteArray(array)
+    ds.GetRasterBand(1).SetNoDataValue(nodata)
+    ds.GetRasterBand(1).FlushCache()
+    ds = None
     return None

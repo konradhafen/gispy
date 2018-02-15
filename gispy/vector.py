@@ -1,4 +1,5 @@
 from osgeo import ogr
+import geopandas as gpd
 
 def vector_test():
     return "this is the vector module of the gispy package"
@@ -73,3 +74,21 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
         lyr.SetFeature(feat)
     ds.Destroy()
     return None
+
+def fieldExists(lyr, fieldname):
+    """
+    Determine if field exists in a layer.
+
+    Args:
+        lyr: OGR Layer.
+        fieldname: Name of field.
+
+    Returns:
+        bool: True if field exists, False if it does not.
+
+    """
+    defn = lyr.GetLayerDefn()
+    if defn.GetFieldIndex(fieldname) is not -1:
+        return True
+    else:
+        return False
