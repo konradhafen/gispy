@@ -231,6 +231,8 @@ def maskArray(array, mask, nodata=-9999):
         array with nodata where mask is false
 
     """
+    if array.shape != mask.shape:
+        print "error masking array: array shapes are different", array.shape, mask.shape
     return np.where(mask, array, nodata)
 
 def maskRaster(rasterPath, array, nodata=-9999, band=1):
@@ -253,6 +255,29 @@ def maskRaster(rasterPath, array, nodata=-9999, band=1):
     ds.GetRasterBand.SetNoDataValue(nodata)
     ds = None
     return None
+
+def maskRasterWithRaster(inputraster, maskraster, inputband=1, maskband=1):
+    """
+    Mask raster with another raster according to no data extent.
+
+    Args:
+        inputraster: Path of raster to be masked.
+        maskraster: Path of raster to use as mask.
+        inputband: Band of input raster to be masked (default: 1)
+        maskband: Band of mask raster to use as mask (default: 1)
+
+    Returns:
+
+    """
+    ds = openGDALRaster(inputraster, gdal.GA_Update)
+    dsmask = openGDALRaster(maskraster)
+    band = ds.GetRasterBand(inputband).ReadAsArray()
+    maskarray = dsmask.GetRasterBand(maskband).ReadAsArray()
+    nodata = dsmask.GetRasterBand(maskband).GetNoDataValue()
+    ds.GetRasterBand(inputband).WriteArray(maskArray(band, np.where(maskarray==nodata, 0, 1), nodata))
+    ds.GetRasterBand(inputband).SetNoDataValue(nodata)
+    ds = None
+    dsmask = None
 
 def openGDALRaster(rasterPath, access=gdal.GA_ReadOnly):
     ds = gdal.Open(rasterPath, access)
@@ -310,7 +335,7 @@ def percentileOfMultibandIndex(datapath, index, percentilepath, scorepath=None, 
 
     return None
 
-def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj, allcells=False, datatype = gdal.GDT_Float32):
+def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj, allcells=False, nodata=-9999, datatype = gdal.GDT_Float32):
     """
     Convert polygon shapefile to raster dataset.
 
@@ -333,12 +358,16 @@ def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj, al
     outds = gdal.GetDriverByName('GTiff').Create(rasterpath, cols, rows, 1, datatype)
     outds.SetProjection(prj)
     outds.SetGeoTransform(geot)
+    band = outds.GetRasterBand(1).ReadAsArray()
+    band.fill(nodata)
+    outds.GetRasterBand(1).WriteArray(band)
+    outds.GetRasterBand(1).SetNoDataValue(nodata)
 
     ALL_TOUCHED = 'FALSE'
     if allcells: ALL_TOUCHED = 'TRUE'
 
     if vector.fieldExists(lyr, fieldname):
-        status = gdal.RasterizeLayer(outds, [1], lyr, options=['ALL_TOUCHED='+ALL_TOUCHED, 'ATTRIBUTE='+fieldname])
+        status = gdal.RasterizeLayer(outds, [1], lyr, options=['ALL_TOUCHED='+ALL_TOUCHED, 'ATTRIBUTE='+fieldname, 'NODATA='+str(nodata)])
         if status is not 0:
             print "Rasterize not successful"
     else:
