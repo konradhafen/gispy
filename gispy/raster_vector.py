@@ -105,9 +105,14 @@ def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj, al
     outds = None
     return None
 
-def zonalStatistics(vectorpath, rasterpath, nodata):
+def zonalStatistics(vectorpath, rasterpath, write=True):
     rasterds = raster.openGDALRaster(rasterpath)
     vectords = vector.openOGRDataSource(vectorpath)
     lyr = vectords.GetLayer()
     geot = rasterds.GetGeoTransform()
+    feat = lyr.GetNextFeature()
+    while feat:
+        tmpds = vector.createOGRDataSource('temp', 'Memory')
+        tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
+        tmplyr.CreateFeature(feat.Clone())
     return None
