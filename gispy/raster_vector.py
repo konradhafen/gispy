@@ -150,8 +150,6 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
             'count': float(maskarray.count()),
             'fid': float(feat.GetFID())
         }
-        print maskarray
-        print featstats
         stats.append(featstats)
         tmpras = None
         tmpds = None
