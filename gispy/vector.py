@@ -53,7 +53,8 @@ def createFields(lyr, fieldnames, fieldtype = ogr.OFTReal):
     for name in fieldnames:
         field = ogr.FieldDefn(name, fieldtype)
         index = lyr.FindFieldIndex(name, 1)
-        if index is not -1: lyr.DeleteField(index)
+        if index is not -1:
+            lyr.DeleteField(index)
         lyr.CreateField(field)
     return lyr
 
