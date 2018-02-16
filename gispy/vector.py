@@ -137,7 +137,7 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
 
     Args:
         inshp: shapefile to add zonal stats to
-        zsresult: result of zonal stats (from rasterstats module)
+        zsresult: result of zonal stats (from rasterstats package)
         id: FID of feature corresponding to stats
         stats: names of statistics to join
         fieldnames: names of fields to create (corresponding to stats)
@@ -212,7 +212,7 @@ def reprojectShapefileLayer(shapefile, newshapefile, newsrs):
     transform = osr.CoordinateTransformation(srs, newsrs)
 
     outds = createOGRDataSource(newshapefile)
-    outlyr = lyr = ds.CreateLayer(getFilenameWithoutExtenstion(newshapefile), srs=newsrs, geom_type=layer.GetGeomType())
+    outlyr = outds.CreateLayer(getFilenameWithoutExtenstion(newshapefile), srs=newsrs, geom_type=layer.GetGeomType())
     copyFields(outlyr, layer.GetLayerDefn())
     defn = outlyr.GetLayerDefn()
     feat = layer.GetNextFeature()
