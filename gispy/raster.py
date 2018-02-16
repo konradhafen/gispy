@@ -6,10 +6,6 @@ import os
 def raster_test():
     return "this is the raster module of the gispy package"
 
-
-
-
-
 def createBandIndex(rasterPath, minValue, maxValue):
     """
 
@@ -28,6 +24,13 @@ def createBandIndex(rasterPath, minValue, maxValue):
         return array
     else:
         return None
+
+def createGDALRaster(filename, rows, cols, bands=1, datatype=gdal.GDT_Float32, drivername='GTiff', geot=None):
+    driver = gdal.GetDriverByName(drivername)
+    ds = driver.Create(filename, cols, rows, bands, datatype)
+    if geot is not None:
+        ds.SetGeoTransform(geot)
+    return ds
 
 def createMask(rasterPath, minValue, maxValue, band=1):
     """
@@ -86,6 +89,17 @@ def getGeoTransformAndSize(rasterPath):
             return None, None, geot
     else:
         return None, None, None
+
+def getOffsetGeot(row, col, geot):
+    newgeot = [
+        geot[0] + (col * geot[1]),
+        geot[1],
+        0.0,
+        geot[3] + (row * geot[5]),
+        0.0,
+        geot[5]
+    ]
+    return newgeot
 
 def getProjection(rasterPath):
     ds = openGDALRaster(rasterPath)
@@ -269,10 +283,10 @@ def percentileOfMultibandIndex(datapath, index, percentilepath, scorepath=None, 
             mask = np.ones((result.shape))
 
         ds = gdal.Open(datapath)
-        writeArrayAsGTiff(percentilepath, maskArray(result, mask), rows=result.shape[0], cols=result.shape[1],
+        writeArrayAsRaster(percentilepath, maskArray(result, mask), rows=result.shape[0], cols=result.shape[1],
                           geot=ds.GetGeoTransform(), srs=ds.GetProjection())
         if scorepath is not None:
-            writeArrayAsGTiff(scorepath, maskArray(score, mask), rows=result.shape[0], cols=result.shape[1],
+            writeArrayAsRaster(scorepath, maskArray(score, mask), rows=result.shape[0], cols=result.shape[1],
                               geot=ds.GetGeoTransform(), srs=ds.GetProjection())
         ds = None
     else:
@@ -280,9 +294,9 @@ def percentileOfMultibandIndex(datapath, index, percentilepath, scorepath=None, 
 
     return None
 
-def writeArrayAsGTiff(path, array, rows, cols, geot, srs, nodata=-9999, nan=-9999, datatype=gdal.GDT_Float32):
+def writeArrayAsRaster(path, array, rows, cols, geot, srs=None, nodata=-9999, nan=-9999, datatype=gdal.GDT_Float32, drivername = 'GTiff'):
     """
-    Write array to a GeoTiff raster
+    Write array to a raster dataset
 
     Args:
         path: output file for raster
@@ -290,16 +304,18 @@ def writeArrayAsGTiff(path, array, rows, cols, geot, srs, nodata=-9999, nan=-999
         rows: number of rows in array
         cols: number of columns in array
         geot: affine geotransformation for the output raster
-        srs: spatial reference for the output raster
-        nodata: no data value for the output raster
-        nan: value in array that should be written as nodata
+        srs: spatial reference for the output raster (default: None)
+        nodata: no data value for the output raster (default: -9999)
+        nan: value in array that should be written as nodata (default: -9999)
         datatype: gdal data type of output raster (default: GDT_Float32)
+        drivername: Name of GDAL driver to use to create raster (default: 'GTiff')
 
     Returns:
         None
 
     """
-    ds = gdal.GetDriverByName("GTiff").Create(path, xsize=cols, ysize=rows, bands=1, eType=datatype)
+    driver = gdal.GetDriverByName(drivername)
+    ds = driver.Create(path, xsize=cols, ysize=rows, bands=1, eType=datatype)
     ds.SetProjection(srs)
     ds.SetGeoTransform(geot)
     array = np.where((array==np.nan) | (array==nan), nodata, array)

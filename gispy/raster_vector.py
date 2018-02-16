@@ -1,8 +1,17 @@
 from osgeo import gdal, ogr, osr
+import numpy as np
+import math
 import os
 import raster
 import vector
 
+
+def bboxToOffsets(bbox, geot):
+    col1 = int((bbox[0] - geot[0]) / geot[1])
+    col2 = int((bbox[1] - geot[0]) / geot[1]) + 1
+    row1 = int((bbox[3] - geot[3]) / geot[5])
+    row2 = int((bbox[2] - geot[3]) / geot[5]) + 1
+    return (row1, row2, col1, col2)
 
 def clipByFeature(inputdir, outputdir, rasterfiles, shapefile, fieldname, nodata=-9999, xres=None, yres=None):
     """
@@ -63,7 +72,7 @@ def clipRasterWithPolygon(rasterpath, polygonpath, outputpath, nodata=-9999, xre
     gdal.Warp(outputpath, rasterpath, options=warpOptions)
     return None
 
-def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj, allcells=False, nodata=-9999, datatype = gdal.GDT_Float32):
+def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj=None, drivername='GTiff', allcells=False, nodata=-9999, datatype = gdal.GDT_Float32, islayer=False):
     """
     Convert polygon shapefile to raster dataset.
 
@@ -75,16 +84,22 @@ def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj, al
         cols: Number of columns in new raster.
         geot: Affine geotransform of new raster.
         prj: Spatial reference of new raster.
+        drivername: Name of GDAL driver to use to create raster (default: 'GTiff')
         allcells: If all cells intersected by polygons should be rasterized, or just when polygon includes cell center (defaul: False).
         nodata: No data value.
         datatype: GDAL datatype of new raster (default: gdal.GDT_Float32).
+        islayer (bool): True if vector path is an OGRLayer (default: False)
 
     Returns:
 
     """
-    inds = ogr.Open(vectorpath)
-    lyr = inds.GetLayer()
-    outds = gdal.GetDriverByName('GTiff').Create(rasterpath, cols, rows, 1, datatype)
+    if islayer:
+        lyr = vectorpath
+    else:
+        inds = ogr.Open(vectorpath)
+        lyr = inds.GetLayer()
+    driver = gdal.GetDriverByName(drivername)
+    outds = driver.Create(rasterpath, cols, rows, 1, datatype)
     outds.SetProjection(prj)
     outds.SetGeoTransform(geot)
     band = outds.GetRasterBand(1).ReadAsArray()
@@ -102,17 +117,43 @@ def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj, al
     else:
         print "Rasterize field does not exist"
 
+    if inds: inds = None
     outds = None
     return None
 
-def zonalStatistics(vectorpath, rasterpath, write=True):
+def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], prepend=None, idxfield=None):
     rasterds = raster.openGDALRaster(rasterpath)
     vectords = vector.openOGRDataSource(vectorpath)
     lyr = vectords.GetLayer()
     geot = rasterds.GetGeoTransform()
+    array = rasterds.ReadAsArray()
+    nodata = rasterds.GetRasterBand(1).GetNoDataValue()
+    stats=[]
     feat = lyr.GetNextFeature()
     while feat:
         tmpds = vector.createOGRDataSource('temp', 'Memory')
         tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
         tmplyr.CreateFeature(feat.Clone())
-    return None
+        offsets = bboxToOffsets(feat.GetGeometryRef().GetEnvelope(), geot)
+        newgeot= raster.getOffsetGeot(offsets[0], offsets[2], geot)
+        tmpras = raster.createGDALRaster('', offsets[1]-offsets[0], offsets[3]-offsets[2], datatype=gdal.GDT_Byte, drivername='MEM', geot=newgeot)
+        gdal.RasterizeLayer(tmpras, [1], tmplyr, burn_values=[1])
+        tmparray = tmpras.ReadAsArray()
+        maskarray = np.ma.MaskedArray(array[offsets[0]:offsets[1], offsets[2]:offsets[3]],
+                                      mask=np.logical_or(array[offsets[0]:offsets[1], offsets[2]:offsets[3]]==nodata, np.logical_not(tmparray)))
+        featstats = {
+            'min' : float(maskarray.min()),
+            'mean': float(maskarray.mean()),
+            'max': float(maskarray.max()),
+            'sd': float(maskarray.std()),
+            'sum': float(maskarray.sum()),
+            'count': float(maskarray.count()),
+            'fid': float(feat.GetFID())
+        }
+        print maskarray
+        print featstats
+        stats.append(featstats)
+        tmpras = None
+        tmpds = None
+        feat = lyr.GetNextFeature()
+    return stats
