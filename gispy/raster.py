@@ -1,6 +1,7 @@
 from osgeo import gdal, ogr, osr
 import numpy as np
 from scipy import stats
+import math
 import os
 
 def raster_test():
@@ -48,6 +49,11 @@ def createMask(rasterPath, minValue, maxValue, band=1):
     """
     array = getRasterBandAsArray(rasterPath, band)
     return np.where((array < minValue) | (array > maxValue), 0, 1)
+
+def getCellAddressOfPoint(x, y, geot):
+    col = math.floor((x - geot[0]) / geot[1])
+    row = math.floor((geot[3] - y) / abs(geot[5]))
+    return (row, col)
 
 def getGeoTransform(rasterPath):
     """
