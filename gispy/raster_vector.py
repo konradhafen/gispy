@@ -1,6 +1,7 @@
 from osgeo import gdal, ogr, osr
 import numpy as np
 import math
+import struct
 import os
 import raster
 import vector
@@ -129,14 +130,17 @@ def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTR
      if lyr.GetGeomType() is not ogr.wkbPoint:
          print "incorrect geometry type, should be points", lyr.GetGeomType()
          return None
-     vector.createFields(lyr, fieldname, datatype)
+     vector.createFields(lyr, [fieldname], datatype)
      feat = lyr.GetNextFeature()
      while feat:
          geom = feat.GetGeometryRef()
          row, col = raster.getCellAddressOfPoint(geom.GetX(), geom.GetY(), geot)
-         feat.SetField(fieldname, ras.GetRasterBand(1).ReadRaster(xoff=col, yoff=row, xsize=1, ysize=1, buf_xsize=1, buf_ysize=1))
+         feat.SetField(fieldname, struct.unpack('f'*1, ras.GetRasterBand(1).ReadRaster(xoff=col, yoff=row, xsize=1, ysize=1,
+                                                                                       buf_xsize=1, buf_ysize=1,
+                                                                                       buf_type=gdal.GDT_Float32))[0])
          lyr.SetFeature(feat)
          feat = lyr.GetNextFeature()
+     lyr = None
      shp.Destroy()
 
 def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], prepend=None, idxfield=None):
