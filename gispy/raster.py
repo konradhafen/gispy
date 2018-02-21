@@ -239,6 +239,7 @@ def maskRasterWithRaster(inputraster, maskraster, inputband=1, maskband=1):
     band = ds.GetRasterBand(inputband).ReadAsArray()
     maskarray = dsmask.GetRasterBand(maskband).ReadAsArray()
     nodata = dsmask.GetRasterBand(maskband).GetNoDataValue()
+    print nodata
     ds.GetRasterBand(inputband).WriteArray(maskArray(band, np.where(maskarray==nodata, 0, 1), nodata))
     ds.GetRasterBand(inputband).SetNoDataValue(nodata)
     ds = None
@@ -249,7 +250,7 @@ def openGDALRaster(rasterPath, access=gdal.GA_ReadOnly):
     if ds is not None:
         return ds
 
-def percentileForAllBands(multipath, outpath):
+def percentileForAllBands(multipath, outpath, maskpath=None):
     multi = getRasterAsArray(multipath)
     outmulti = np.empty(multi.shape)
     mean = np.mean(multi, axis=0)
@@ -258,8 +259,9 @@ def percentileForAllBands(multipath, outpath):
         data = multi[band, :, :]
         outmulti[band, :, :] = stats.norm.cdf(data, loc=mean, scale=sd)*100
     writeArrayAsRaster(outpath, outmulti, outmulti.shape[1], outmulti.shape[2], getGeoTransform(multipath), getProjection(multipath))
-    for i in range(outmulti.shape[0]):
-        maskRasterWithRaster(outpath, multipath, i, 1)
+    if maskpath is not None:
+        for i in range(outmulti.shape[0]):
+            maskRasterWithRaster(outpath, maskpath, i+1, 1)
 
 
 def percentileMultiband(multi, index):
@@ -337,15 +339,14 @@ def writeArrayAsRaster(path, array, rows, cols, geot, srs, nodata=-9999, nan=-99
     bands = 1
     if len(array.shape) == 3:
         bands = array.shape[0]
-    print "bands", bands
     ds = driver.Create(path, xsize=cols, ysize=rows, bands=bands, eType=datatype)
     ds.SetProjection(srs)
     ds.SetGeoTransform(geot)
     array = np.where((array==np.nan) | (array==nan), nodata, array)
-    for band in range(1, bands+1):
+    for band in range(bands):
         print 'writing band', band, 'of', bands
-        ds.GetRasterBand(band).WriteArray(array[band,:,:])
-        ds.GetRasterBand(band).SetNoDataValue(nodata)
-        ds.GetRasterBand(band).FlushCache()
+        ds.GetRasterBand(band+1).WriteArray(array[band,:,:])
+        ds.GetRasterBand(band+1).SetNoDataValue(nodata)
+        ds.GetRasterBand(band+1).FlushCache()
     ds = None
     return None
