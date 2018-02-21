@@ -123,32 +123,45 @@ def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj=Non
     return None
 
 def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTReal, idxfield=None):
-     ras = raster.openGDALRaster(rasterpath)
-     geot = ras.GetGeoTransform()
-     shp = vector.openOGRDataSource(pointshapefile, 1)
-     lyr = shp.GetLayer()
-     if lyr.GetGeomType() is not ogr.wkbPoint:
-         print "incorrect geometry type, should be points", lyr.GetGeomType()
-         return None
-     vector.createFields(lyr, [fieldname], datatype)
-     feat = lyr.GetNextFeature()
-     while feat:
-         nband = 1
-         if idxfield is not None:
-             nband = feat.GetField(idxfield)
-         geom = feat.GetGeometryRef()
-         row, col = raster.getCellAddressOfPoint(geom.GetX(), geom.GetY(), geot)
-         if nband <= 0 or nband > ras.RasterCount:
-             value = -9999.0
-         else:
-             value = struct.unpack('f'*1, ras.GetRasterBand(int(nband)).ReadRaster(xoff=col, yoff=row, xsize=1, ysize=1,
-                                                                          buf_xsize=1, buf_ysize=1,
-                                                                          buf_type=gdal.GDT_Float32))[0]
-         feat.SetField(fieldname, value)
-         lyr.SetFeature(feat)
-         feat = lyr.GetNextFeature()
-     lyr = None
-     shp.Destroy()
+    """
+    Get the value of a raster at point locations.
+
+    Args:
+        pointshapefile: Path to point shapefile.
+        rasterpath: Path to raster dataset.
+        fieldname: Name of field to create and write raster values.
+        datatype: OGR datatype of created field (default: ogr.OFTReal)
+        idxfield: Shapefile field containing band number to use on multipband rasters (default: None, get value from band 1)
+
+    Returns:
+
+    """
+    ras = raster.openGDALRaster(rasterpath)
+    geot = ras.GetGeoTransform()
+    shp = vector.openOGRDataSource(pointshapefile, 1)
+    lyr = shp.GetLayer()
+    if lyr.GetGeomType() is not ogr.wkbPoint:
+        print "incorrect geometry type, should be points", lyr.GetGeomType()
+        return None
+    vector.createFields(lyr, [fieldname], datatype)
+    feat = lyr.GetNextFeature()
+    while feat:
+        nband = 1
+        if idxfield is not None:
+            nband = feat.GetField(idxfield)
+        geom = feat.GetGeometryRef()
+        row, col = raster.getCellAddressOfPoint(geom.GetX(), geom.GetY(), geot)
+        if nband <= 0 or nband > ras.RasterCount:
+            value = -9999.0
+        else:
+            value = struct.unpack('f'*1, ras.GetRasterBand(int(nband)).ReadRaster(xoff=col, yoff=row, xsize=1, ysize=1,
+                                                                      buf_xsize=1, buf_ysize=1,
+                                                                      buf_type=gdal.GDT_Float32))[0]
+        feat.SetField(fieldname, value)
+        lyr.SetFeature(feat)
+        feat = lyr.GetNextFeature()
+    lyr = None
+    shp.Destroy()
 
 def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], prepend=None, idxfield=None):
     rasterds = raster.openGDALRaster(rasterpath)
