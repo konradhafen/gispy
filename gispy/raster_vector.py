@@ -122,7 +122,7 @@ def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj=Non
     outds = None
     return None
 
-def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTReal):
+def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTReal, idxfield=None):
      ras = raster.openGDALRaster(rasterpath)
      geot = ras.GetGeoTransform()
      shp = vector.openOGRDataSource(pointshapefile, 1)
@@ -132,12 +132,20 @@ def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTR
          return None
      vector.createFields(lyr, [fieldname], datatype)
      feat = lyr.GetNextFeature()
+     nbands = ras.RasterCount()
      while feat:
+         nband = 1
+         if idxfield is not None:
+             nband = feat.GetField(idxfield)
          geom = feat.GetGeometryRef()
          row, col = raster.getCellAddressOfPoint(geom.GetX(), geom.GetY(), geot)
-         feat.SetField(fieldname, struct.unpack('f'*1, ras.GetRasterBand(1).ReadRaster(xoff=col, yoff=row, xsize=1, ysize=1,
-                                                                                       buf_xsize=1, buf_ysize=1,
-                                                                                       buf_type=gdal.GDT_Float32))[0])
+         if nband <= 0 or nband > nbands:
+             value = -9999.0
+         else:
+             value = struct.unpack('f'*1, ras.GetRasterBand(nband).ReadRaster(xoff=col, yoff=row, xsize=1, ysize=1,
+                                                                          buf_xsize=1, buf_ysize=1,
+                                                                          buf_type=gdal.GDT_Float32))[0]
+         feat.SetField(fieldname, value)
          lyr.SetFeature(feat)
          feat = lyr.GetNextFeature()
      lyr = None
