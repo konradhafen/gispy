@@ -132,17 +132,16 @@ def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTR
          return None
      vector.createFields(lyr, [fieldname], datatype)
      feat = lyr.GetNextFeature()
-     nbands = ras.RasterCount()
      while feat:
          nband = 1
          if idxfield is not None:
              nband = feat.GetField(idxfield)
          geom = feat.GetGeometryRef()
          row, col = raster.getCellAddressOfPoint(geom.GetX(), geom.GetY(), geot)
-         if nband <= 0 or nband > nbands:
+         if nband <= 0 or nband > ras.RasterCount:
              value = -9999.0
          else:
-             value = struct.unpack('f'*1, ras.GetRasterBand(nband).ReadRaster(xoff=col, yoff=row, xsize=1, ysize=1,
+             value = struct.unpack('f'*1, ras.GetRasterBand(int(nband)).ReadRaster(xoff=col, yoff=row, xsize=1, ysize=1,
                                                                           buf_xsize=1, buf_ysize=1,
                                                                           buf_type=gdal.GDT_Float32))[0]
          feat.SetField(fieldname, value)
