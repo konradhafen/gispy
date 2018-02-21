@@ -228,8 +228,8 @@ def maskRasterWithRaster(inputraster, maskraster, inputband=1, maskband=1):
     Args:
         inputraster: Path of raster to be masked.
         maskraster: Path of raster to use as mask.
-        inputband: Band of input raster to be masked (default: 1)
-        maskband: Band of mask raster to use as mask (default: 1)
+        inputband: Band of input raster to be masked (default: 1).
+        maskband: Band of mask raster to use as mask (default: 1).
 
     Returns:
 
@@ -249,16 +249,29 @@ def openGDALRaster(rasterPath, access=gdal.GA_ReadOnly):
     if ds is not None:
         return ds
 
+def percentileForAllBands(multipath, outpath):
+    multi = getRasterAsArray(multipath)
+    outmulti = np.empty(multi.shape)
+    mean = np.mean(multi, axis=0)
+    sd = np.std(multi, axis=0)
+    for band in range(multi.shape[0]):
+        data = multi[band, :, :]
+        outmulti[band, :, :] = stats.norm.cdf(data, loc=mean, scale=sd)*100
+    writeArrayAsRaster(outpath, outmulti, outmulti.shape[1], outmulti.shape[2], getGeoTransform(multipath))
+    for i in range(outmulti.shape[0]):
+        maskRasterWithRaster(outpath, multipath, i, 1)
+
+
 def percentileMultiband(multi, index):
     """
-    Calculate the percentile of a specified value at a position in a multiband raster
+    Calculate the percentile of a specified value at a position in a multiband raster.
 
     Args:
-        multi: Path to multiband raster
-        index: Numpy array containing the band index
+        multi: Multiband numpy array.
+        index: Numpy array containing the band index.
 
     Returns:
-        2d arrays result (percentile of value based on all bands), and score (value of requested band)
+        2d array result (percentile of value based on all bands), and score (value of requested band).
 
     """
     mean = np.mean(multi, axis=0) #mean of all bands at each row,col
@@ -321,11 +334,11 @@ def writeArrayAsRaster(path, array, rows, cols, geot, srs=None, nodata=-9999, na
 
     """
     driver = gdal.GetDriverByName(drivername)
-    ds = driver.Create(path, xsize=cols, ysize=rows, bands=1, eType=datatype)
+    ds = driver.Create(path, xsize=cols, ysize=rows, bands=array.shape[0], eType=datatype)
     ds.SetProjection(srs)
     ds.SetGeoTransform(geot)
     array = np.where((array==np.nan) | (array==nan), nodata, array)
-    ds.GetRasterBand(1).WriteArray(array)
+    ds.WriteRaster(array)
     ds.GetRasterBand(1).SetNoDataValue(nodata)
     ds.GetRasterBand(1).FlushCache()
     ds = None
