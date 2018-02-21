@@ -257,7 +257,7 @@ def percentileForAllBands(multipath, outpath):
     for band in range(multi.shape[0]):
         data = multi[band, :, :]
         outmulti[band, :, :] = stats.norm.cdf(data, loc=mean, scale=sd)*100
-    writeArrayAsRaster(outpath, outmulti, outmulti.shape[1], outmulti.shape[2], getGeoTransform(multipath))
+    writeArrayAsRaster(outpath, outmulti, outmulti.shape[1], outmulti.shape[2], getGeoTransform(multipath), getProjection(multipath))
     for i in range(outmulti.shape[0]):
         maskRasterWithRaster(outpath, multipath, i, 1)
 
@@ -313,7 +313,7 @@ def percentileOfMultibandIndex(datapath, index, percentilepath, scorepath=None, 
 
     return None
 
-def writeArrayAsRaster(path, array, rows, cols, geot, srs=None, nodata=-9999, nan=-9999, datatype=gdal.GDT_Float32, drivername = 'GTiff'):
+def writeArrayAsRaster(path, array, rows, cols, geot, srs, nodata=-9999, nan=-9999, datatype=gdal.GDT_Float32, drivername = 'GTiff'):
     """
     Write array to a raster dataset
 
@@ -334,12 +334,18 @@ def writeArrayAsRaster(path, array, rows, cols, geot, srs=None, nodata=-9999, na
 
     """
     driver = gdal.GetDriverByName(drivername)
-    ds = driver.Create(path, xsize=cols, ysize=rows, bands=array.shape[0], eType=datatype)
+    bands = 1
+    if len(array.shape) == 3:
+        bands = array.shape[0]
+    print "bands", bands
+    ds = driver.Create(path, xsize=cols, ysize=rows, bands=bands, eType=datatype)
     ds.SetProjection(srs)
     ds.SetGeoTransform(geot)
     array = np.where((array==np.nan) | (array==nan), nodata, array)
-    ds.WriteRaster(array)
-    ds.GetRasterBand(1).SetNoDataValue(nodata)
-    ds.GetRasterBand(1).FlushCache()
+    for band in range(1, bands+1):
+        print 'writing band', band, 'of', bands
+        ds.GetRasterBand(band).WriteArray(array[band,:,:])
+        ds.GetRasterBand(band).SetNoDataValue(nodata)
+        ds.GetRasterBand(band).FlushCache()
     ds = None
     return None
