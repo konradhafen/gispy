@@ -197,3 +197,6 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
         tmpds = None
         feat = lyr.GetNextFeature()
     return stats
+
+def zonalStatisticsDelta():
+    return None
