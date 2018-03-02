@@ -198,5 +198,49 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
         feat = lyr.GetNextFeature()
     return stats
 
-def zonalStatisticsDelta():
-    return None
+def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10, deltatype='percent'):
+    rasterds = raster.openGDALRaster(rasterpath)
+    deltads = raster.openGDALRaster(deltapath)
+    vectords = vector.openOGRDataSource(vectorpath)
+    lyr = vectords.GetLayer()
+    geot = rasterds.GetGeoTransform()
+    array = rasterds.ReadAsArray()
+    deltaarray = deltads.ReadAsArray()
+    nodata = rasterds.GetRasterBand(1).GetNoDataValue()
+    stats = []
+    feat = lyr.GetNextFeature()
+    while feat:
+        tmpds = vector.createOGRDataSource('temp', 'Memory')
+        tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
+        tmplyr.CreateFeature(feat.Clone())
+        offsets = bboxToOffsets(feat.GetGeometryRef().GetEnvelope(), geot)
+        newgeot = raster.getOffsetGeot(offsets[0], offsets[2], geot)
+        tmpras = raster.createGDALRaster('', offsets[1] - offsets[0], offsets[3] - offsets[2], datatype=gdal.GDT_Byte,
+                                         drivername='MEM', geot=newgeot)
+        gdal.RasterizeLayer(tmpras, [1], tmplyr, burn_values=[1])
+        tmparray = tmpras.ReadAsArray()
+        deltamaskarray = np.ma.MaskedArray(deltaarray[offsets[0]:offsets[1], offsets[2]:offsets[3]],
+                                      mask=np.logical_or(array[offsets[0]:offsets[1], offsets[2]:offsets[3]] == nodata,
+                                                         np.logical_not(tmparray)))
+        median = float(deltamaskarray.median())
+        diff = abs(deltamaskarray-median)
+        print feat.GetFID
+        print diff
+        maskarray = np.ma.MaskedArray(array[offsets[0]:offsets[1], offsets[2]:offsets[3]],
+                                      mask=np.logical_or(array[offsets[0]:offsets[1], offsets[2]:offsets[3]] == nodata,
+                                                         np.logical_not(tmparray)))
+
+        # featstats = {
+        #     'min': float(maskarray.min()),
+        #     'mean': float(maskarray.mean()),
+        #     'max': float(maskarray.max()),
+        #     'sd': float(maskarray.std()),
+        #     'sum': float(maskarray.sum()),
+        #     'count': float(maskarray.count()),
+        #     'fid': float(feat.GetFID())
+        # }
+        # stats.append(featstats)
+        # tmpras = None
+        # tmpds = None
+        feat = lyr.GetNextFeature()
+    # return stats
