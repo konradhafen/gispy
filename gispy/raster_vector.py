@@ -204,31 +204,39 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10, delta
     vectords = vector.openOGRDataSource(vectorpath)
     lyr = vectords.GetLayer()
     geot = rasterds.GetGeoTransform()
-    array = rasterds.ReadAsArray()
-    deltaarray = deltads.ReadAsArray()
+    # array = rasterds.ReadAsArray()
+    # deltaarray = deltads.ReadAsArray()
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
     stats = []
     feat = lyr.GetNextFeature()
+    print "features", lyr.GetFeatureCount()
+    print "starting while"
+    i=0
     while feat:
+        print "feature", i+1
         tmpds = vector.createOGRDataSource('temp', 'Memory')
         tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
         tmplyr.CreateFeature(feat.Clone())
         offsets = bboxToOffsets(feat.GetGeometryRef().GetEnvelope(), geot)
+        print "offsets", offsets
+        array = rasterds.GetRasterBand(1).ReadAsArray(offsets[2], offsets[0], (offsets[3]-offsets[2]),
+                                                      (offsets[1]-offsets[0]))
+        deltaarray = deltads.GetRasterBand(1).ReadAsArray(offsets[2], offsets[0], (offsets[3]-offsets[2]),
+                                                      (offsets[1]-offsets[0]))
         newgeot = raster.getOffsetGeot(offsets[0], offsets[2], geot)
         tmpras = raster.createGDALRaster('', offsets[1] - offsets[0], offsets[3] - offsets[2], datatype=gdal.GDT_Byte,
                                          drivername='MEM', geot=newgeot)
         gdal.RasterizeLayer(tmpras, [1], tmplyr, burn_values=[1])
         tmparray = tmpras.ReadAsArray()
-        deltamaskarray = np.ma.MaskedArray(deltaarray[offsets[0]:offsets[1], offsets[2]:offsets[3]],
-                                      mask=np.logical_or(array[offsets[0]:offsets[1], offsets[2]:offsets[3]] == nodata,
-                                                         np.logical_not(tmparray)))
-        median = float(deltamaskarray.median())
+        print "size array delta temp", array.shape, deltaarray.shape, tmparray.shape
+        deltamaskarray = np.ma.MaskedArray(deltaarray, mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
+        #median = float(deltamaskarray.median())
+        median = np.ma.median(deltamaskarray)
         diff = abs(deltamaskarray-median)
-        print feat.GetFID
-        print diff
-        maskarray = np.ma.MaskedArray(array[offsets[0]:offsets[1], offsets[2]:offsets[3]],
-                                      mask=np.logical_or(array[offsets[0]:offsets[1], offsets[2]:offsets[3]] == nodata,
-                                                         np.logical_not(tmparray)))
+        print "median", median
+        print feat.GetFID()
+        #print diff
+        maskarray = np.ma.MaskedArray(array, mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
 
         # featstats = {
         #     'min': float(maskarray.min()),
@@ -243,4 +251,5 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10, delta
         # tmpras = None
         # tmpds = None
         feat = lyr.GetNextFeature()
+        i+=1
     # return stats
