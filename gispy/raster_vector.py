@@ -163,6 +163,19 @@ def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTR
     lyr = None
     shp.Destroy()
 
+def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, sum=None, count=None, majority=None):
+    featstats = {
+        'min': min,
+        'mean': mean,
+        'max': max,
+        'sd': sd,
+        'sum': sum,
+        'count': count,
+        'majority': majority,
+        'fid': fid
+    }
+    return featstats
+
 def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], prepend=None, idxfield=None):
     rasterds = raster.openGDALRaster(rasterpath)
     vectords = vector.openOGRDataSource(vectorpath)
@@ -208,8 +221,6 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10, delta
     stats = []
     outofbounds = []
     feat = lyr.GetNextFeature()
-    print "features", lyr.GetFeatureCount()
-    i=0
     while feat:
         tmpds = vector.createOGRDataSource('temp', 'Memory')
         tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
@@ -229,24 +240,16 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10, delta
             deltamaskarray = np.ma.MaskedArray(deltaarray, mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
             median = np.ma.median(deltamaskarray)
             diff = abs(deltamaskarray-median)
-            print "median", median
-            if np.ma.is_masked(median):
-                print "masked"
-            print "fid", feat.GetFID()
-            #print diff
-            maskarray = np.ma.MaskedArray(array, mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
+            if not np.ma.is_masked(median):
+                maskarray = np.ma.MaskedArray(array, mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
 
-            # featstats = {
-            #     'min': float(maskarray.min()),
-            #     'mean': float(maskarray.mean()),
-            #     'max': float(maskarray.max()),
-            #     'sd': float(maskarray.std()),
-            #     'sum': float(maskarray.sum()),
-            #     'count': float(maskarray.count()),
-            #     'fid': float(feat.GetFID())
-            # }
+                stats.append(setFeatureStats(feat.GetFID(), min=float(maskarray.min()), mean=float(maskarray.mean()),
+                                             max=float(maskarray.max()), sum=float(maskarray.sum())))
+            else:
+                stats.append(setFeatureStats(feat.GetFID()))
+
         else:
-            #featstats = None
+            stats.append(setFeatureStats(feat.GetFID()))
             outofbounds.append(feat.GetFID())
         # stats.append(featstats)
         # tmpras = None
