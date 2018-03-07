@@ -12,7 +12,8 @@ def bboxToOffsets(bbox, geot):
     col2 = int((bbox[1] - geot[0]) / geot[1]) + 1
     row1 = int((bbox[3] - geot[3]) / geot[5])
     row2 = int((bbox[2] - geot[3]) / geot[5]) + 1
-    return (row1, row2, col1, col2)
+    return [row1, row2, col1, col2]
+
 
 def clipByFeature(inputdir, outputdir, rasterfiles, shapefile, fieldname, nodata=-9999, xres=None, yres=None):
     """
@@ -48,6 +49,7 @@ def clipByFeature(inputdir, outputdir, rasterfiles, shapefile, fieldname, nodata
                                       fieldValue=value, field=fieldname)
     return None
 
+
 def clipRasterWithPolygon(rasterpath, polygonpath, outputpath, nodata=-9999, xres=None, yres=None, field=None, fieldValue=None):
     """
 
@@ -72,6 +74,7 @@ def clipRasterWithPolygon(rasterpath, polygonpath, outputpath, nodata=-9999, xre
     gdal.WarpOptions()
     gdal.Warp(outputpath, rasterpath, options=warpOptions)
     return None
+
 
 def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj=None, drivername='GTiff', allcells=False, nodata=-9999, datatype = gdal.GDT_Float32, islayer=False):
     """
@@ -122,6 +125,7 @@ def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj=Non
     outds = None
     return None
 
+
 def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTReal, idxfield=None):
     """
     Get the value of a raster at point locations.
@@ -163,10 +167,12 @@ def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTR
     lyr = None
     shp.Destroy()
 
-def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, sum=None, count=None, majority=None):
+
+def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, sum=None, count=None, majority=None):
     featstats = {
         'min': min,
         'mean': mean,
+        'median': median,
         'max': max,
         'sd': sd,
         'sum': sum,
@@ -175,6 +181,7 @@ def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, sum=None, count
         'fid': fid
     }
     return featstats
+
 
 def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], prepend=None, idxfield=None):
     rasterds = raster.openGDALRaster(rasterpath)
@@ -211,6 +218,7 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
         feat = lyr.GetNextFeature()
     return stats
 
+
 def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10, deltatype='percent'):
     rasterds = raster.openGDALRaster(rasterpath)
     deltads = raster.openGDALRaster(deltapath)
@@ -226,7 +234,9 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10, delta
         tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
         tmplyr.CreateFeature(feat.Clone())
         offsets = bboxToOffsets(feat.GetGeometryRef().GetEnvelope(), geot)
-        print "offsets", offsets
+        for i in range(0, len(offsets)):
+            if offsets[i] < 0:
+                offsets[i] = 0
         if not any(x < 0 for x in offsets):
             array = rasterds.GetRasterBand(1).ReadAsArray(offsets[2], offsets[0], (offsets[3]-offsets[2]),
                                                           (offsets[1]-offsets[0]))
@@ -249,11 +259,10 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10, delta
                 stats.append(setFeatureStats(feat.GetFID()))
 
         else:
+            print "out of bounds", feat.GetFID()
             stats.append(setFeatureStats(feat.GetFID()))
             outofbounds.append(feat.GetFID())
-        # stats.append(featstats)
-        # tmpras = None
-        # tmpds = None
+        tmpras = None
+        tmpds = None
         feat = lyr.GetNextFeature()
-    print outofbounds
-    # return stats
+    return stats
