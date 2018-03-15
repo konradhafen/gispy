@@ -219,7 +219,7 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
     return stats
 
 
-def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10, deltatype='percent'):
+def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=20.0, deltatype='percent'):
     rasterds = raster.openGDALRaster(rasterpath)
     deltads = raster.openGDALRaster(deltapath)
     vectords = vector.openOGRDataSource(vectorpath)
@@ -250,8 +250,9 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10, delta
             deltamaskarray = np.ma.MaskedArray(deltaarray, mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
             median = np.ma.median(deltamaskarray)
             diff = abs(deltamaskarray-median)
+            #analysisarray = np.ma.MaskedArray(deltaarray, mask=np.logical_or(deltamaskarray, abs((diff/median)*100.0) > 20.0))
             if not np.ma.is_masked(median):
-                maskarray = np.ma.MaskedArray(array, mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
+                maskarray = np.ma.MaskedArray(deltaarray, mask=np.logical_or(deltamaskarray, abs((diff/median)*100.0) > 20.0))
 
                 stats.append(setFeatureStats(feat.GetFID(), min=float(maskarray.min()), mean=float(maskarray.mean()),
                                              max=float(maskarray.max()), sum=float(maskarray.sum())))
