@@ -168,6 +168,36 @@ def getXYResolution(rasterPath):
     if geot is not None: return geot[1], geot[5]
     else: return None
 
+def greaterThan(raster1, raster2, outputraster, valuetrue, valuefalse):
+    """
+
+    Args:
+        raster1:
+        raster2:
+        outputraster:
+        valuetrue:
+        valuefalse:
+
+    Returns:
+
+    """
+    return None
+
+def lessThan(raster1, raster2, outputraster, valuetrue, valuefalse):
+    """
+
+    Args:
+        raster1:
+        raster2:
+        outputraster:
+        valuetrue:
+        valuefalse:
+
+    Returns:
+
+    """
+    return None
+
 def linearTake(values, indices):
     """
     Get 2d array of band values from a multiband raster of shape (bands, rows, columns)
