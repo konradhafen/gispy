@@ -229,6 +229,7 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=20.0, del
     stats = []
     outofbounds = []
     feat = lyr.GetNextFeature()
+    iter = 0
     while feat:
         tmpds = vector.createOGRDataSource('temp', 'Memory')
         tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
@@ -249,13 +250,28 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=20.0, del
             tmparray = tmpras.ReadAsArray()
             deltamaskarray = np.ma.MaskedArray(deltaarray, mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
             median = np.ma.median(deltamaskarray)
-            diff = abs(deltamaskarray-median)
+            diff = (abs(deltamaskarray-median)/median)*100.0
             #analysisarray = np.ma.MaskedArray(deltaarray, mask=np.logical_or(deltamaskarray, abs((diff/median)*100.0) > 20.0))
+            #print "median", median, np.ma.is_masked(median)
             if not np.ma.is_masked(median):
-                maskarray = np.ma.MaskedArray(deltaarray, mask=np.logical_or(deltamaskarray, abs((diff/median)*100.0) > 20.0))
+                maskarray = np.ma.MaskedArray(array, mask=np.logical_or(np.ma.getmask(deltamaskarray), diff > 20.0))
 
                 stats.append(setFeatureStats(feat.GetFID(), min=float(maskarray.min()), mean=float(maskarray.mean()),
-                                             max=float(maskarray.max()), sum=float(maskarray.sum())))
+                                             max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
+                                             median=float(maskarray.median())))
+                # print "array"
+                # print array
+                # print "deltarray"
+                # print deltaarray
+                # print "tmparray"
+                # print tmparray
+                # print"deltamaskarray"
+                # print deltamaskarray
+                # print "diff"
+                # print diff
+                # print "maskarray"
+                # print maskarray
+
             else:
                 stats.append(setFeatureStats(feat.GetFID()))
 
@@ -265,5 +281,8 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=20.0, del
             outofbounds.append(feat.GetFID())
         tmpras = None
         tmpds = None
+        iter+=1
+        if (iter % 1000 is 0):
+            print "iter", iter, "of", lyr.GetFeatureCount()
         feat = lyr.GetNextFeature()
     return stats
