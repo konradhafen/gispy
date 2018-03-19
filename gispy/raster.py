@@ -168,12 +168,12 @@ def getXYResolution(rasterPath):
     if geot is not None: return geot[1], geot[5]
     else: return None
 
-def greaterThan(raster1, raster2, outputraster, valuetrue, valuefalse):
+def greaterThan(valueRaster, compareRaster, outputraster, valuetrue=1, valuefalse=0):
     """
 
     Args:
-        raster1:
-        raster2:
+        valueRaster:
+        compareRaster:
         outputraster:
         valuetrue:
         valuefalse:
@@ -181,6 +181,13 @@ def greaterThan(raster1, raster2, outputraster, valuetrue, valuefalse):
     Returns:
 
     """
+
+    values = getRasterBandAsArray(valueRaster, 1)
+    compare = getRasterBandAsArray(compareRaster, 1)
+    result = np.where(values > compare, valuetrue, valuefalse)
+    resultMasked = maskArray(result, values, -9999)
+    writeArrayAsRaster(outputraster, resultMasked, result.shape[0], result.shape[1], getGeoTransform(valueRaster), getProjection(valueRaster), nodata=-9999)
+
     return None
 
 def lessThan(raster1, raster2, outputraster, valuetrue, valuefalse):

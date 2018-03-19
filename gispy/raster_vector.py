@@ -1,5 +1,6 @@
 from osgeo import gdal, ogr, osr
 import numpy as np
+from scipy import stats
 import math
 import struct
 import os
@@ -190,7 +191,7 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
     geot = rasterds.GetGeoTransform()
     array = rasterds.ReadAsArray()
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
-    stats=[]
+    zstats=[]
     feat = lyr.GetNextFeature()
     while feat:
         tmpds = vector.createOGRDataSource('temp', 'Memory')
@@ -212,21 +213,21 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
             'count': float(maskarray.count()),
             'fid': float(feat.GetFID())
         }
-        stats.append(featstats)
+        zstats.append(featstats)
         tmpras = None
         tmpds = None
         feat = lyr.GetNextFeature()
-    return stats
+    return zstats
 
 
-def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=20.0, deltatype='percent'):
+def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10.0, deltatype='percent'):
     rasterds = raster.openGDALRaster(rasterpath)
     deltads = raster.openGDALRaster(deltapath)
     vectords = vector.openOGRDataSource(vectorpath)
     lyr = vectords.GetLayer()
     geot = rasterds.GetGeoTransform()
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
-    stats = []
+    zstats = []
     outofbounds = []
     feat = lyr.GetNextFeature()
     iter = 0
@@ -248,17 +249,20 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=20.0, del
                                              drivername='MEM', geot=newgeot)
             gdal.RasterizeLayer(tmpras, [1], tmplyr, burn_values=[1])
             tmparray = tmpras.ReadAsArray()
-            deltamaskarray = np.ma.MaskedArray(deltaarray, mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
-            median = np.ma.median(deltamaskarray)
-            diff = (abs(deltamaskarray-median)/median)*100.0
-            #analysisarray = np.ma.MaskedArray(deltaarray, mask=np.logical_or(deltamaskarray, abs((diff/median)*100.0) > 20.0))
-            #print "median", median, np.ma.is_masked(median)
-            if not np.ma.is_masked(median):
-                maskarray = np.ma.MaskedArray(array, mask=np.logical_or(np.ma.getmask(deltamaskarray), diff > 20.0))
+            testmaskarray = np.ma.MaskedArray(array,
+                                               mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
+            testmean = np.ma.mean(testmaskarray)
 
-                stats.append(setFeatureStats(feat.GetFID(), min=float(maskarray.min()), mean=float(maskarray.mean()),
+            if testmean != nodata:
+                deltamaskarray = np.ma.MaskedArray(deltaarray,
+                                                   mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
+                median = np.ma.median(deltamaskarray)
+                diff = (abs(deltamaskarray - median) / median) * 100.0
+                maskarray = np.ma.MaskedArray(array, mask=np.logical_or(np.ma.getmask(deltamaskarray), diff > deltavalue))
+
+                zstats.append(setFeatureStats(feat.GetFID(), min=float(maskarray.min()), mean=float(maskarray.mean()),
                                              max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
-                                             median=float(maskarray.median())))
+                                             median=float(np.ma.median(maskarray)), majority=stats.mode(maskarray, axis=None)[0][0]))
                 # print "array"
                 # print array
                 # print "deltarray"
@@ -271,13 +275,14 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=20.0, del
                 # print diff
                 # print "maskarray"
                 # print maskarray
+                # print "majority", stats.mode(maskarray, axis=None)[0][0]
 
             else:
-                stats.append(setFeatureStats(feat.GetFID()))
+                zstats.append(setFeatureStats(feat.GetFID()))
 
         else:
             print "out of bounds", feat.GetFID()
-            stats.append(setFeatureStats(feat.GetFID()))
+            zstats.append(setFeatureStats(feat.GetFID()))
             outofbounds.append(feat.GetFID())
         tmpras = None
         tmpds = None
@@ -285,4 +290,4 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=20.0, del
         if (iter % 1000 is 0):
             print "iter", iter, "of", lyr.GetFeatureCount()
         feat = lyr.GetNextFeature()
-    return stats
+    return zstats
