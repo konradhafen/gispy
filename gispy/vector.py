@@ -138,7 +138,7 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
     Args:
         inshp: shapefile to add zonal stats to
         zsresult: result of zonal stats (from rasterstats package)
-        id: FID of feature corresponding to stats
+        id: Name in zstats corresponding to FID of feature
         stats: names of statistics to join
         fieldnames: names of fields to create (corresponding to stats)
         stattype: ogr OFT data type of field to create (default: ogr.OFTReal)

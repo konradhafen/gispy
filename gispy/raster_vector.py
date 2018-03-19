@@ -169,7 +169,7 @@ def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTR
     shp.Destroy()
 
 
-def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, sum=None, count=None, majority=None):
+def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, sum=None, count=None, majority=None, deltamed=None):
     featstats = {
         'min': min,
         'mean': mean,
@@ -179,7 +179,8 @@ def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, su
         'sum': sum,
         'count': count,
         'majority': majority,
-        'fid': fid
+        'fid': fid,
+        'dmed': deltamed
     }
     return featstats
 
@@ -231,7 +232,7 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10.0, del
     outofbounds = []
     feat = lyr.GetNextFeature()
     iter = 0
-    while feat:
+    while feat and iter<16:
         tmpds = vector.createOGRDataSource('temp', 'Memory')
         tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
         tmplyr.CreateFeature(feat.Clone())
@@ -262,7 +263,8 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10.0, del
 
                 zstats.append(setFeatureStats(feat.GetFID(), min=float(maskarray.min()), mean=float(maskarray.mean()),
                                              max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
-                                             median=float(np.ma.median(maskarray)), majority=stats.mode(maskarray, axis=None)[0][0]))
+                                             median=float(np.ma.median(maskarray)), majority=stats.mode(maskarray, axis=None)[0][0],
+                                              deltamed=median))
                 # print "array"
                 # print array
                 # print "deltarray"
@@ -287,7 +289,7 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10.0, del
         tmpras = None
         tmpds = None
         iter+=1
-        if (iter % 1000 is 0):
+        if (iter % 1000 == 0):
             print "iter", iter, "of", lyr.GetFeatureCount()
         feat = lyr.GetNextFeature()
     return zstats
