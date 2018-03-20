@@ -221,7 +221,23 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
     return zstats
 
 
-def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10.0, deltatype='percent'):
+def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatype='percent'):
+    """
+    Zonal statistics using a second raster layer to exclude values from statistic calculations. Currently,
+    This is implemented as follows. For each zone represented in vectorpath, the median of deltapath is identified.
+    Cells from deltapath where the absolute value of ((median - deltapath)/median)*100 is greater than delta value are
+    excluded from statistical calculations.
+
+    Args:
+        vectorpath: Vector zones
+        rasterpath: Raster to calculate statistics from
+        deltapath: Raster to exclude cells for statistic calculation
+        deltavalue: Threshold for exclusion from statistic calculations
+        deltatype: Type of theshold to use. Currently, only percent is available.
+
+    Returns:
+
+    """
     rasterds = raster.openGDALRaster(rasterpath)
     deltads = raster.openGDALRaster(deltapath)
     vectords = vector.openOGRDataSource(vectorpath)
@@ -265,20 +281,6 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10.0, del
                                              max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
                                              median=float(np.ma.median(maskarray)), majority=float(stats.mode(maskarray, axis=None)[0][0]),
                                               deltamed=float((median*30*30)/1000000)))
-                # print "array"
-                # print array
-                # print "deltarray"
-                # print deltaarray
-                # print "tmparray"
-                # print tmparray
-                # print"deltamaskarray"
-                # print deltamaskarray
-                # print "diff"
-                # print diff
-                # print "maskarray"
-                # print maskarray
-                # print "majority", stats.mode(maskarray, axis=None)[0][0]
-
             else:
                 zstats.append(setFeatureStats(feat.GetFID()))
 
@@ -289,7 +291,7 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10.0, del
         tmpras = None
         tmpds = None
         iter+=1
-        if (iter % 1000 == 0):
-            print "iter", iter, "of", lyr.GetFeatureCount()
+        # if (iter % 1000 == 0):
+        #     print "iter", iter, "of", lyr.GetFeatureCount()
         feat = lyr.GetNextFeature()
     return zstats
