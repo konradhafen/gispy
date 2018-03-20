@@ -138,7 +138,36 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
     Args:
         inshp: shapefile to add zonal stats to
         zsresult: result of zonal stats (from rasterstats package)
-        id: Name in zstats corresponding to FID of feature
+        id: name of zonal stat with FID of feature corresponding to stats
+        stats: names of statistics to join
+        fieldnames: names of fields to create (corresponding to stats)
+        stattype: ogr OFT data type of field to create (default: ogr.OFTReal)
+
+    Returns:
+        None
+
+    """
+    print "starting join"
+    ds = ogr.Open(inshp, 1)
+    lyr = ds.GetLayer(0)
+    lyr = createFields(lyr, fieldnames, stattype)
+    print "fields created"
+    for result in zsresult:
+        feat = lyr.GetFeature(int(result[id]))
+        for i in range(len(stats)):
+            feat.SetField(fieldnames[i], result[stats[i]])
+        lyr.SetFeature(feat)
+    ds.Destroy()
+    return None
+
+def joinZonalStatsToSHP_rasterstats(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFTReal):
+    """
+    Join zonal stats results to shapefile
+
+    Args:
+        inshp: shapefile to add zonal stats to
+        zsresult: result of zonal stats (from rasterstats package)
+        id: FID of feature corresponding to stats
         stats: names of statistics to join
         fieldnames: names of fields to create (corresponding to stats)
         stattype: ogr OFT data type of field to create (default: ogr.OFTReal)

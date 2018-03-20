@@ -180,7 +180,7 @@ def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, su
         'count': count,
         'majority': majority,
         'fid': fid,
-        'dmed': deltamed
+        'deltamed': deltamed
     }
     return featstats
 
@@ -232,7 +232,7 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10.0, del
     outofbounds = []
     feat = lyr.GetNextFeature()
     iter = 0
-    while feat and iter<16:
+    while feat:
         tmpds = vector.createOGRDataSource('temp', 'Memory')
         tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
         tmplyr.CreateFeature(feat.Clone())
@@ -263,8 +263,8 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue=10.0, del
 
                 zstats.append(setFeatureStats(feat.GetFID(), min=float(maskarray.min()), mean=float(maskarray.mean()),
                                              max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
-                                             median=float(np.ma.median(maskarray)), majority=stats.mode(maskarray, axis=None)[0][0],
-                                              deltamed=median))
+                                             median=float(np.ma.median(maskarray)), majority=float(stats.mode(maskarray, axis=None)[0][0]),
+                                              deltamed=float((median*30*30)/1000000)))
                 # print "array"
                 # print array
                 # print "deltarray"
