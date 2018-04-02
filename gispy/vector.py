@@ -1,6 +1,5 @@
 from osgeo import gdal, ogr, osr
 import os
-import geopandas as gpd
 
 def vector_test():
     return "this is the vector module of the gispy package"
