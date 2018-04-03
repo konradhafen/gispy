@@ -178,11 +178,12 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
                                     datatype=gdal.GDT_Int32)
     outds.GetRasterBand(1).Fill(-1)
     outds.GetRasterBand(1).SetNoDataValue(-1)
+    outds.SetProjection(rasterds.GetProjection())
     outofbounds = []
     feat = lyr.GetNextFeature()
     iter = 0
-    while feat and iter < 20:
-        id = feat.GetFID()
+    while feat:
+        id = feat.GetField("REACHCODE")
         tmpds = vector.createOGRDataSource('temp', 'Memory')
         tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
         tmplyr.CreateFeature(feat.Clone())
@@ -213,10 +214,7 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
                 maskarray.set_fill_value(-1)
                 maskarray = maskarray.filled()
                 maskarray = np.where(maskarray>=0, id, np.where(outarray>=0, outarray, maskarray))
-                #maskarray = np.where(outarray>=0, outarray, maskarray)
                 outds.GetRasterBand(1).WriteArray(maskarray, offsets[2], offsets[0])
-                print "feat", id
-                print maskarray
 
         else:
             print "out of bounds", feat.GetFID()
