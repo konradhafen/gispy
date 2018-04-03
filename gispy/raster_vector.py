@@ -168,6 +168,59 @@ def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTR
     lyr = None
     shp.Destroy()
 
+def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=10000.0, deltatype='percent'):
+    rasterds = raster.openGDALRaster(rasterpath)
+    vectords = vector.openOGRDataSource(vectorpath)
+    lyr = vectords.GetLayer()
+    geot = rasterds.GetGeoTransform()
+    nodata = rasterds.GetRasterBand(1).GetNoDataValue()
+    outds = raster.createGDALRaster(outputpath, rasterds.RasterYSize, rasterds.RasterXSize, geot=geot)
+    outofbounds = []
+    feat = lyr.GetNextFeature()
+    iter = 0
+    while feat and iter < 20:
+        id = feat.GetFID()
+        tmpds = vector.createOGRDataSource('temp', 'Memory')
+        tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
+        tmplyr.CreateFeature(feat.Clone())
+        offsets = bboxToOffsets(feat.GetGeometryRef().GetEnvelope(), geot)
+        for i in range(0, len(offsets)):
+            if offsets[i] < 0:
+                offsets[i] = 0
+        if not any(x < 0 for x in offsets):
+            array = rasterds.GetRasterBand(1).ReadAsArray(offsets[2], offsets[0], (offsets[3] - offsets[2]),
+                                                          (offsets[1] - offsets[0]))
+            newgeot = raster.getOffsetGeot(offsets[0], offsets[2], geot)
+            tmpras = raster.createGDALRaster('', offsets[1] - offsets[0], offsets[3] - offsets[2],
+                                             datatype=gdal.GDT_Byte,
+                                             drivername='MEM', geot=newgeot)
+            gdal.RasterizeLayer(tmpras, [1], tmplyr, burn_values=[1])
+            tmparray = tmpras.ReadAsArray()
+            testmaskarray = np.ma.MaskedArray(array,
+                                              mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
+            testmean = np.ma.mean(testmaskarray)
+
+            if testmean != nodata:
+                deltamaskarray = np.ma.MaskedArray(testmaskarray,
+                                                   mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
+                median = np.ma.median(deltamaskarray)
+                diff = (abs(deltamaskarray - median) / median) * 100.0
+                maskarray = np.ma.MaskedArray(array,
+                                              mask=np.logical_or(np.ma.getmask(deltamaskarray), diff > deltavalue))
+                maskarray.set_fill_value(-9999.0)
+                print "feat", id
+                print maskarray.filled()
+
+        else:
+            print "out of bounds", feat.GetFID()
+            outofbounds.append(feat.GetFID())
+        tmpras = None
+        tmpds = None
+        iter += 1
+        if (iter % 10000 == 0):
+            print "iter", iter, "of", lyr.GetFeatureCount()
+        feat = lyr.GetNextFeature()
+    return None
 
 def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, sum=None, count=None, majority=None, deltamed=None):
     featstats = {
