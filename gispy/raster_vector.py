@@ -174,7 +174,10 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
     lyr = vectords.GetLayer()
     geot = rasterds.GetGeoTransform()
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
-    outds = raster.createGDALRaster(outputpath, rasterds.RasterYSize, rasterds.RasterXSize, geot=geot)
+    outds = raster.createGDALRaster(outputpath, rasterds.RasterYSize, rasterds.RasterXSize, geot=geot,
+                                    datatype=gdal.GDT_Int32)
+    outds.GetRasterBand(1).Fill(-1)
+    outds.GetRasterBand(1).SetNoDataValue(-1)
     outofbounds = []
     feat = lyr.GetNextFeature()
     iter = 0
@@ -190,26 +193,30 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
         if not any(x < 0 for x in offsets):
             array = rasterds.GetRasterBand(1).ReadAsArray(offsets[2], offsets[0], (offsets[3] - offsets[2]),
                                                           (offsets[1] - offsets[0]))
+            outarray = outds.GetRasterBand(1).ReadAsArray(offsets[2], offsets[0], (offsets[3] - offsets[2]),
+                                                          (offsets[1] - offsets[0]))
             newgeot = raster.getOffsetGeot(offsets[0], offsets[2], geot)
             tmpras = raster.createGDALRaster('', offsets[1] - offsets[0], offsets[3] - offsets[2],
                                              datatype=gdal.GDT_Byte,
                                              drivername='MEM', geot=newgeot)
             gdal.RasterizeLayer(tmpras, [1], tmplyr, burn_values=[1])
             tmparray = tmpras.ReadAsArray()
-            testmaskarray = np.ma.MaskedArray(array,
+            featarray = np.ma.MaskedArray(array,
                                               mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
-            testmean = np.ma.mean(testmaskarray)
+            featmean = np.ma.mean(featarray)
 
-            if testmean != nodata:
-                deltamaskarray = np.ma.MaskedArray(testmaskarray,
-                                                   mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
-                median = np.ma.median(deltamaskarray)
-                diff = (abs(deltamaskarray - median) / median) * 100.0
+            if featmean != nodata:
+                median = np.ma.median(featarray)
+                diff = (abs(featarray - median) / median) * 100.0
                 maskarray = np.ma.MaskedArray(array,
-                                              mask=np.logical_or(np.ma.getmask(deltamaskarray), diff > deltavalue))
-                maskarray.set_fill_value(-9999.0)
+                                              mask=np.logical_or(np.ma.getmask(featarray), diff > deltavalue))
+                maskarray.set_fill_value(-1)
+                maskarray = maskarray.filled()
+                maskarray = np.where(maskarray>=0, id, np.where(outarray>=0, outarray, maskarray))
+                #maskarray = np.where(outarray>=0, outarray, maskarray)
+                outds.GetRasterBand(1).WriteArray(maskarray, offsets[2], offsets[0])
                 print "feat", id
-                print maskarray.filled()
+                print maskarray
 
         else:
             print "out of bounds", feat.GetFID()
@@ -220,6 +227,7 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
         if (iter % 10000 == 0):
             print "iter", iter, "of", lyr.GetFeatureCount()
         feat = lyr.GetNextFeature()
+    outds = None
     return None
 
 def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, sum=None, count=None, majority=None, deltamed=None):
