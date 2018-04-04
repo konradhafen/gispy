@@ -183,7 +183,7 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
     feat = lyr.GetNextFeature()
     iter = 0
     while feat:
-        id = feat.GetField("REACHCODE")
+        id = feat.GetFID()
         tmpds = vector.createOGRDataSource('temp', 'Memory')
         tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
         tmplyr.CreateFeature(feat.Clone())
@@ -353,4 +353,22 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatyp
         # if (iter % 1000 == 0):
         #     print "iter", iter, "of", lyr.GetFeatureCount()
         feat = lyr.GetNextFeature()
+    return zstats
+
+def zonalStatistics_rasterZones(rasterzones, rasterpath, indentifier="fid", write=['min', 'max', 'sd', 'mean']):
+    zones = raster.getRasterBandAsArray(rasterzones, 1)
+    rasterds = raster.openGDALRaster(rasterpath)
+    rastervals = rasterds.GetRasterBand(1).ReadAsArray()
+    nodata = rasterds.GetRasterBand(1).GetNoDataValue()
+    print "data loaded, getting unique values"
+    uvals = np.unique(zones)
+    print "looping through unique values"
+    zstats = []
+    for uval in uvals:
+        if uval >= 0:
+            if uval < 20:
+                vals = rastervals[np.where(zones == uval)]
+                zstats.append(setFeatureStats(uval, max=float(vals.max()), min=float(vals.min()),
+                                              mean=float(vals.max()), sd=float(vals.std()), median=float(vals.median()),
+                                              majority=float(stats.mode(vals, axis=None)[0][0])))
     return zstats
