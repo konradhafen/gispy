@@ -168,20 +168,25 @@ def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTR
     lyr = None
     shp.Destroy()
 
-def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=10000.0, deltatype='percent'):
+def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=10000.0, deltatype='percent', minvalue = 0.0):
+    np.set_printoptions(suppress=True)
     rasterds = raster.openGDALRaster(rasterpath)
     vectords = vector.openOGRDataSource(vectorpath)
+    print "data opened"
     lyr = vectords.GetLayer()
     geot = rasterds.GetGeoTransform()
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
     outds = raster.createGDALRaster(outputpath, rasterds.RasterYSize, rasterds.RasterXSize, geot=geot,
                                     datatype=gdal.GDT_Int32)
-    outds.GetRasterBand(1).Fill(-1)
+    print "datacreated"
+    #outds.GetRasterBand(1).Fill(-1)
+    print "filled"
     outds.GetRasterBand(1).SetNoDataValue(-1)
     outds.SetProjection(rasterds.GetProjection())
     outofbounds = []
     feat = lyr.GetNextFeature()
     iter = 0
+    print "starting loop"
     while feat:
         id = feat.GetFID()
         tmpds = vector.createOGRDataSource('temp', 'Memory')
@@ -209,11 +214,20 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
             if featmean != nodata:
                 median = np.ma.median(featarray)
                 diff = (abs(featarray - median) / median) * 100.0
+                # print "array"
+                # print np.around(array)
+                # print "diff"
+                # print np.around(diff)
                 maskarray = np.ma.MaskedArray(array,
-                                              mask=np.logical_or(np.ma.getmask(featarray), diff > deltavalue))
+                                              mask=np.logical_or(np.ma.getmask(featarray),
+                                                                 np.logical_or(diff > deltavalue, array < minvalue)))
                 maskarray.set_fill_value(-1)
                 maskarray = maskarray.filled()
                 maskarray = np.where(maskarray>=0, id, np.where(outarray>=0, outarray, maskarray))
+                # print "feat array"
+                # print tmparray
+                # print "result"
+                # print maskarray
                 outds.GetRasterBand(1).WriteArray(maskarray, offsets[2], offsets[0])
 
         else:
@@ -225,7 +239,8 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
         if (iter % 10000 == 0):
             print "iter", iter, "of", lyr.GetFeatureCount()
         feat = lyr.GetNextFeature()
-    outds = None
+    #outds = None
+    print "done"
     return None
 
 def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, sum=None, count=None, majority=None, deltamed=None):
@@ -360,15 +375,13 @@ def zonalStatistics_rasterZones(rasterzones, rasterpath, indentifier="fid", writ
     rasterds = raster.openGDALRaster(rasterpath)
     rastervals = rasterds.GetRasterBand(1).ReadAsArray()
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
-    print "data loaded, getting unique values"
     uvals = np.unique(zones)
-    print "looping through unique values"
     zstats = []
     for uval in uvals:
         if uval >= 0:
-            if uval < 20:
-                vals = rastervals[np.where(zones == uval)]
-                zstats.append(setFeatureStats(uval, max=float(vals.max()), min=float(vals.min()),
-                                              mean=float(vals.max()), sd=float(vals.std()), median=float(vals.median()),
-                                              majority=float(stats.mode(vals, axis=None)[0][0])))
+            vals = rastervals[np.where(zones == uval)]
+            zstats.append(setFeatureStats(uval, max=float(vals.max()), min=float(vals.min()),
+                                          mean=float(vals.max()), sd=float(vals.std()),
+                                          median=float(np.median(vals)),
+                                          majority=float(stats.mode(vals, axis=None)[0][0])))
     return zstats
