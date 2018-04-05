@@ -154,7 +154,7 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
     for result in zsresult:
         feat = lyr.GetFeature(int(result[id]))
         for i in range(len(stats)):
-            feat.SetField(fieldnames[i], result[stats[i]])
+            feat.SetField(fieldnames[i], result[stats[i]]*1.0)
         lyr.SetFeature(feat)
     ds.Destroy()
     return None
