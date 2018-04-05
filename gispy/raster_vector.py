@@ -354,7 +354,7 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatyp
                 zstats.append(setFeatureStats(feat.GetFID(), min=float(maskarray.min()), mean=float(maskarray.mean()),
                                              max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
                                              median=float(np.ma.median(maskarray)), majority=float(stats.mode(maskarray, axis=None)[0][0]),
-                                              deltamed=float((median*30*30)/1000000)))
+                                              deltamed=float((median*30*30)/1000000), count=maskarray.count()))
             else:
                 zstats.append(setFeatureStats(feat.GetFID()))
 
@@ -370,18 +370,24 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatyp
         feat = lyr.GetNextFeature()
     return zstats
 
-def zonalStatistics_rasterZones(rasterzones, rasterpath, indentifier="fid", write=['min', 'max', 'sd', 'mean']):
+def zonalStatistics_rasterZones(rasterzones, rasterpath, indentifier="fid"):
     zones = raster.getRasterBandAsArray(rasterzones, 1)
     rasterds = raster.openGDALRaster(rasterpath)
     rastervals = rasterds.GetRasterBand(1).ReadAsArray()
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
     uvals = np.unique(zones)
     zstats = []
+    iter = 0
     for uval in uvals:
         if uval >= 0:
             vals = rastervals[np.where(zones == uval)]
+            vals = vals[vals != nodata]
             zstats.append(setFeatureStats(uval, max=float(vals.max()), min=float(vals.min()),
                                           mean=float(vals.max()), sd=float(vals.std()),
                                           median=float(np.median(vals)),
-                                          majority=float(stats.mode(vals, axis=None)[0][0])))
+                                          majority=float(stats.mode(vals, axis=None)[0][0]),
+                                          count=vals.size))
+        iter += 1
+        if (iter % 10000 == 0):
+            print "iter", iter, "of", len(uvals)
     return zstats
