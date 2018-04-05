@@ -295,7 +295,7 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
     return zstats
 
 
-def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatype='percent'):
+def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatype='percent', minvalue=0.0):
     """
     Zonal statistics using a second raster layer to exclude values from statistic calculations. Currently,
     This is implemented as follows. For each zone represented in vectorpath, the median of deltapath is identified.
@@ -349,7 +349,9 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatyp
                                                    mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
                 median = np.ma.median(deltamaskarray)
                 diff = (abs(deltamaskarray - median) / median) * 100.0
-                maskarray = np.ma.MaskedArray(array, mask=np.logical_or(np.ma.getmask(deltamaskarray), diff > deltavalue))
+                maskarray = np.ma.MaskedArray(array, mask=np.logical_or(np.ma.getmask(deltamaskarray),
+                                                                        np.logical_or(diff > deltavalue,
+                                                                                      array < minvalue)))
 
                 zstats.append(setFeatureStats(feat.GetFID(), min=float(maskarray.min()), mean=float(maskarray.mean()),
                                              max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
