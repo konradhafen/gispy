@@ -7,6 +7,16 @@ import os
 def raster_test():
     return "this is the raster module of the gispy package"
 
+def addressOfCoordinates(x, y, geot):
+    col = math.floor((x - geot[0]) / geot[1])
+    row = math.floor((geot[3] - y) / abs(geot[5]))
+    return (row, col)
+
+def coordinatesOfAddress(row, col, geot):
+    x = geot[0] + (col * geot[1])
+    y = geot[3] + (row * geot[5])
+    return (x, y)
+
 def createBandIndex(rasterPath, minValue, maxValue):
     """
 
@@ -204,6 +214,11 @@ def lessThan(raster1, raster2, outputraster, valuetrue, valuefalse):
 
     """
     return None
+
+def linearIndexFromCoordinates(x, y, geot, rows, cols, band=1):
+    row, col = addressOfCoordinates(x, y, geot)
+    idx = (row * (rows-1) + col) + (rows * cols * (band-1))
+    return idx
 
 def linearTake(values, indices):
     """
