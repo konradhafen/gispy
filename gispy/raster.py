@@ -227,7 +227,7 @@ def linearIndexOfCoordinates(x, y, geot, rows, cols, band=1):
     idx = np.add(np.add(np.multiply(row, cols), col), rows*cols*(band-1))
     return idx
 
-def linearTake(values, indices):
+def linearTakeBand(values, band_indices):
     """
     Get 2d array of band values from a multiband raster of shape (bands, rows, columns)
     Args:
@@ -239,7 +239,7 @@ def linearTake(values, indices):
 
     """
     _, nR, nC = values.shape
-    idx = nC*nR*indices + nC*np.arange(nR)[:, None] + np.arange(nC) #convert 2d indices to linear indices
+    idx = nC*nR*band_indices + nC*np.arange(nR)[:, None] + np.arange(nC) #convert 2d indices to linear indices
     return np.take(values, idx), idx
 
 def maskArray(array, mask, nodata=-9999):
@@ -337,7 +337,7 @@ def percentileMultiband(multi, index):
     """
     mean = np.mean(multi, axis=0) #mean of all bands at each row,col
     sd = np.std(multi, axis=0) #standard deviation of all bands at each row,col
-    score, idx = linearTake(multi, index) #value of index band at each row,col
+    score, idx = linearTakeBand(multi, index) #value of index band at each row,col
     result = stats.norm.cdf(score, loc=mean, scale=sd)*100 #percentile
     return result, score
 
