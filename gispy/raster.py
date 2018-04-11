@@ -196,7 +196,8 @@ def greaterThan(valueRaster, compareRaster, outputraster, valuetrue=1, valuefals
     compare = getRasterBandAsArray(compareRaster, 1)
     result = np.where(values > compare, valuetrue, valuefalse)
     resultMasked = maskArray(result, values, -9999)
-    writeArrayAsRaster(outputraster, resultMasked, result.shape[0], result.shape[1], getGeoTransform(valueRaster), getProjection(valueRaster), nodata=-9999)
+    writeArrayAsRaster(outputraster, resultMasked, result.shape[0], result.shape[1], getGeoTransform(valueRaster),
+                       getProjection(valueRaster), nodata=-9999)
 
     return None
 
