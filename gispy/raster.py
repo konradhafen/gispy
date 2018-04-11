@@ -17,6 +17,12 @@ def coordinatesOfAddress(row, col, geot):
     y = np.add(geot[3], np.multiply(row, geot[5]))
     return (x, y)
 
+def coordinatesOfLinearIndex(idx, geot, rows, cols, band=1):
+    row = np.floor(np.divide(np.subtract(idx, rows*cols*(band-1)), cols))
+    col = np.subtract(idx, np.add(np.multiply(row, cols), rows*cols*(band-1)))
+    x, y = coordinatesOfAddress(row, col, geot)
+    return x,y
+
 def createBandIndex(rasterPath, minValue, maxValue):
     """
 
