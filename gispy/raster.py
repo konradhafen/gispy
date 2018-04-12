@@ -13,8 +13,8 @@ def addressOfCoordinates(x, y, geot):
     return row, col
 
 def coordinatesOfAddress(row, col, geot):
-    x = np.add(geot[0], np.multiply(col, geot[1]))
-    y = np.add(geot[3], np.multiply(row, geot[5]))
+    x = np.add(np.add(geot[0], np.multiply(col, geot[1])), 0.5*geot[1])
+    y = np.add(np.add(geot[3], np.multiply(row, geot[5])), 0.5*geot[5])
     return (x, y)
 
 def coordinatesOfLinearIndex(idx, geot, rows, cols, band=1):
@@ -405,7 +405,7 @@ def writeArrayAsRaster(path, array, rows, cols, geot, srs, nodata=-9999, nan=-99
     ds.SetGeoTransform(geot)
     array = np.where((array==np.nan) | (array==nan), nodata, array)
     for band in range(bands):
-        print 'writing band', band, 'of', bands
+        print 'writing band', band+1, 'of', bands
         if multi:
             ds.GetRasterBand(band+1).WriteArray(array[band,:,:])
         else:
