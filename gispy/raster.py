@@ -225,7 +225,7 @@ def lessThan(raster1, raster2, outputraster, valuetrue, valuefalse):
 def linearIndexOfCoordinates(x, y, geot, rows, cols, band=1):
     row, col = addressOfCoordinates(x, y, geot)
     idx = np.add(np.add(np.multiply(row, cols), col), rows*cols*(band-1))
-    return idx
+    return idx.astype(int)
 
 def linearTakeBand(values, band_indices):
     """
@@ -396,15 +396,20 @@ def writeArrayAsRaster(path, array, rows, cols, geot, srs, nodata=-9999, nan=-99
     """
     driver = gdal.GetDriverByName(drivername)
     bands = 1
+    multi = False
     if len(array.shape) == 3:
         bands = array.shape[0]
+        multi = True
     ds = driver.Create(path, xsize=cols, ysize=rows, bands=bands, eType=datatype)
     ds.SetProjection(srs)
     ds.SetGeoTransform(geot)
     array = np.where((array==np.nan) | (array==nan), nodata, array)
     for band in range(bands):
         print 'writing band', band, 'of', bands
-        ds.GetRasterBand(band+1).WriteArray(array[band,:,:])
+        if multi:
+            ds.GetRasterBand(band+1).WriteArray(array[band,:,:])
+        else:
+            ds.GetRasterBand(band + 1).WriteArray(array)
         ds.GetRasterBand(band+1).SetNoDataValue(nodata)
         ds.GetRasterBand(band+1).FlushCache()
     ds = None
