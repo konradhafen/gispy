@@ -57,6 +57,19 @@ def createFields(lyr, fieldnames, fieldtype = ogr.OFTReal):
         lyr.CreateField(field)
     return lyr
 
+def createIDField(inshp, fname = "ID"):
+    ds = ogr.Open(inshp, 1)
+    lyr = ds.GetLayer(0)
+    lyr = createFields(lyr, [fname], ogr.OFTInteger)
+    feat = lyr.GetNextFeature()
+    while feat:
+        fid = feat.GetFID()
+        feat.SetField(fname, fid)
+        lyr.SetFeature(feat)
+    ds.Destroy()
+    return None
+
+
 def createOGRDataSource(filename, driver='ESRI Shapefile'):
     """
     Create OGRDataSource
