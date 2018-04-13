@@ -45,7 +45,7 @@ def createBandIndex(rasterPath, minValue, maxValue):
 def createGDALRaster(filename, rows, cols, bands=1, datatype=gdal.GDT_Float32, drivername='GTiff', geot=None):
     driver = gdal.GetDriverByName(drivername)
     ds = driver.Create(filename, cols, rows, bands, datatype)
-    if geot is not None:
+    if geot is not None and ds is not None:
         ds.SetGeoTransform(geot)
     return ds
 

@@ -338,27 +338,28 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatyp
             newgeot = raster.getOffsetGeot(offsets[0], offsets[2], geot)
             tmpras = raster.createGDALRaster('', offsets[1] - offsets[0], offsets[3] - offsets[2], datatype=gdal.GDT_Byte,
                                              drivername='MEM', geot=newgeot)
-            gdal.RasterizeLayer(tmpras, [1], tmplyr, burn_values=[1])
-            tmparray = tmpras.ReadAsArray()
-            testmaskarray = np.ma.MaskedArray(array,
-                                               mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
-            testmean = np.ma.mean(testmaskarray)
-
-            if testmean != nodata:
-                deltamaskarray = np.ma.MaskedArray(deltaarray,
+            if tmpras is not None:
+                gdal.RasterizeLayer(tmpras, [1], tmplyr, burn_values=[1])
+                tmparray = tmpras.ReadAsArray()
+                testmaskarray = np.ma.MaskedArray(array,
                                                    mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
-                median = np.ma.median(deltamaskarray)
-                diff = (abs(deltamaskarray - median) / median) * 100.0
-                maskarray = np.ma.MaskedArray(array, mask=np.logical_or(np.ma.getmask(deltamaskarray),
-                                                                        np.logical_or(diff > deltavalue,
-                                                                                      deltaarray < minvalue)))
+                testmean = np.ma.mean(testmaskarray)
 
-                zstats.append(setFeatureStats(feat.GetFID(), min=float(maskarray.min()), mean=float(maskarray.mean()),
-                                             max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
-                                             median=float(np.ma.median(maskarray)), majority=float(stats.mode(maskarray, axis=None)[0][0]),
-                                              deltamed=float((median*30*30)/1000000), count=maskarray.count()))
-            else:
-                zstats.append(setFeatureStats(feat.GetFID()))
+                if testmean != nodata:
+                    deltamaskarray = np.ma.MaskedArray(deltaarray,
+                                                       mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
+                    median = np.ma.median(deltamaskarray)
+                    diff = (abs(deltamaskarray - median) / median) * 100.0
+                    maskarray = np.ma.MaskedArray(array, mask=np.logical_or(np.ma.getmask(deltamaskarray),
+                                                                            np.logical_or(diff > deltavalue,
+                                                                                          deltaarray < minvalue)))
+
+                    zstats.append(setFeatureStats(feat.GetFID(), min=float(maskarray.min()), mean=float(maskarray.mean()),
+                                                 max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
+                                                 median=float(np.ma.median(maskarray)), majority=float(stats.mode(maskarray, axis=None)[0][0]),
+                                                  deltamed=float((median*30*30)/1000000), count=maskarray.count()))
+                else:
+                    zstats.append(setFeatureStats(feat.GetFID()))
 
         else:
             print "out of bounds", feat.GetFID()
