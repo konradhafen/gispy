@@ -66,6 +66,9 @@ def createIDField(inshp, fname = "ID"):
         fid = feat.GetFID()
         feat.SetField(fname, fid)
         lyr.SetFeature(feat)
+        feat = lyr.GetNextFeature()
+        if fid % 50000 == 0:
+            print fid
     ds.Destroy()
     return None
 
