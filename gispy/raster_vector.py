@@ -338,7 +338,7 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatyp
             newgeot = raster.getOffsetGeot(offsets[0], offsets[2], geot)
             tmpras = raster.createGDALRaster('', offsets[1] - offsets[0], offsets[3] - offsets[2], datatype=gdal.GDT_Byte,
                                              drivername='MEM', geot=newgeot)
-            if tmpras is not None:
+            if tmpras is not None and array is not None:
                 gdal.RasterizeLayer(tmpras, [1], tmplyr, burn_values=[1])
                 tmparray = tmpras.ReadAsArray()
                 if array.size == np.logical_or(array == nodata, np.logical_not(tmparray)).size:
@@ -373,7 +373,7 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatyp
         tmpras = None
         tmpds = None
         iter+=1
-        if (iter % 10000 == 0):
+        if (iter % 100000 == 0):
             print "iter", iter, "of", lyr.GetFeatureCount()
         feat = lyr.GetNextFeature()
     return zstats
