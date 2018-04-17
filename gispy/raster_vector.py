@@ -346,7 +346,7 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatyp
                                                       mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
                     testmean = np.ma.mean(testmaskarray)
 
-                    if testmean != nodata:
+                    if testmean != nodata and deltaarray is not None:
                         deltamaskarray = np.ma.MaskedArray(deltaarray,
                                                            mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
                         median = np.ma.median(deltamaskarray)
@@ -360,10 +360,13 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatyp
                                                       median=float(np.ma.median(maskarray)), majority=float(stats.mode(maskarray, axis=None)[0][0]),
                                                       deltamed=float((median*30*30)/1000000), count=maskarray.count()))
                     else:
+                        #print "mean = nodata", nodata, testmaskarray
                         zstats.append(setFeatureStats(feat.GetFID()))
                 else:
+                    #print "array sizes not equal"
                     zstats.append(setFeatureStats(feat.GetFID()))
             else:
+                #print "NoneType arrays"
                 zstats.append(setFeatureStats(feat.GetFID()))
 
         else:
