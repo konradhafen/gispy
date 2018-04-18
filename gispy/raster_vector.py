@@ -354,6 +354,7 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatyp
                         maskarray = np.ma.MaskedArray(array, mask=np.logical_or(np.ma.getmask(deltamaskarray),
                                                                                 np.logical_or(diff > deltavalue,
                                                                                               deltaarray < minvalue)))
+                        #print feat.GetFID(), maskarray.count(), maskarray.min(), maskarray.mean(), maskarray.max()
 
                         zstats.append(setFeatureStats(feat.GetFID(), min=float(maskarray.min()), mean=float(maskarray.mean()),
                                                       max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
