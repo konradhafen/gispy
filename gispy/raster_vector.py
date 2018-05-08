@@ -168,7 +168,8 @@ def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTR
     lyr = None
     shp.Destroy()
 
-def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=10000.0, deltatype='percent', minvalue = 0.0):
+def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=10000.0, deltatype='percent', minvalue = 0.0, outdiff=None):
+    print deltavalue, minvalue
     np.set_printoptions(suppress=True)
     rasterds = raster.openGDALRaster(rasterpath)
     vectords = vector.openOGRDataSource(vectorpath)
@@ -178,6 +179,11 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
     outds = raster.createGDALRaster(outputpath, rasterds.RasterYSize, rasterds.RasterXSize, geot=geot,
                                     datatype=gdal.GDT_Int32)
+    if outdiff is not None:
+        diffds = raster.createGDALRaster(outdiff, rasterds.RasterYSize, rasterds.RasterXSize, geot=geot,
+                                        datatype=gdal.GDT_Float32)
+        diffds.GetRasterBand(1).SetNoDataValue(-9999.0)
+        diffds.SetProjection(rasterds.GetProjection())
     print "datacreated"
     #outds.GetRasterBand(1).Fill(-1)
     print "filled"
@@ -208,27 +214,42 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
             gdal.RasterizeLayer(tmpras, [1], tmplyr, burn_values=[1])
             tmparray = tmpras.ReadAsArray()
             featarray = np.ma.MaskedArray(array,
-                                              mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
+                                              mask=np.logical_or(array < minvalue, np.logical_not(tmparray)))
             featmean = np.ma.mean(featarray)
+            #print id
 
             if featmean != nodata:
                 median = np.ma.median(featarray)
-                diff = (abs(featarray - median) / median) * 100.0
-                # print "array"
-                # print np.around(array)
-                # print "diff"
-                # print np.around(diff)
+                #diff = (abs(featarray - median) / median) * 100.0
+                diff = np.divide((featarray - median), array)
+                print "diff", np.min(diff)
+                # diff = (abs(featarray - featmean) / featmean) * 100.0
+
                 maskarray = np.ma.MaskedArray(array,
                                               mask=np.logical_or(np.ma.getmask(featarray),
                                                                  np.logical_or(diff > deltavalue, array < minvalue)))
+                print "mask", np.min(featarray), np.min(array[array >= 125])
                 maskarray.set_fill_value(-1)
                 maskarray = maskarray.filled()
                 maskarray = np.where(maskarray>=0, id, np.where(outarray>=0, outarray, maskarray))
-                # print "feat array"
-                # print tmparray
-                # print "result"
-                # print maskarray
+                # if id == 1954:
+                #     print "median", median, "mean", featmean
+                #     print "feat array"
+                #     print featarray
+                #     print "tmp array"
+                #     print tmparray
+                #     print "array"
+                #     print np.around(array)
+                #     print "diff"
+                #     print np.around(diff)
+                #     print "result"
+                #     print maskarray
                 outds.GetRasterBand(1).WriteArray(maskarray, offsets[2], offsets[0])
+                if outdiff is not None:
+                    diff.set_fill_value(-9999.0)
+                    diff = diff.filled()
+                    diff = np.where(diff >= -9998.9, diff, -9999.0)
+                    diffds.GetRasterBand(1).WriteArray(diff, offsets[2], offsets[0])
 
         else:
             print "out of bounds", feat.GetFID()
