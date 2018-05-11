@@ -424,3 +424,96 @@ def zonalStatistics_rasterZones(rasterzones, rasterpath, indentifier="fid"):
         if (iter % 10000 == 0):
             print "iter", iter, "of", len(uvals)
     return zstats
+
+def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield=None, deltamax=None, deltamin=None, minvalue=0.0):
+    """
+    Zonal statistics using a second raster layer to exclude values from statistic calculations. Currently,
+    This is implemented as follows. For each zone represented in vectorpath, the median of deltapath is identified.
+    Cells from deltapath where the absolute value of ((median - deltapath)/median)*100 is greater than delta value are
+    excluded from statistical calculations.
+
+    Args:
+        vectorpath: Vector zones
+        rasterpath: Raster to calculate statistics from
+        deltapath: Raster to exclude cells for statistic calculation
+        deltavalue: Threshold for exclusion from statistic calculations
+        deltatype: Type of theshold to use. Currently, only percent is available.
+
+    Returns:
+
+    """
+    rasterds = raster.openGDALRaster(rasterpath)
+    deltads = raster.openGDALRaster(deltapath)
+    vectords = vector.openOGRDataSource(vectorpath)
+    lyr = vectords.GetLayer()
+    geot = rasterds.GetGeoTransform()
+    nodata = rasterds.GetRasterBand(1).GetNoDataValue()
+    zstats = []
+    outofbounds = []
+    feat = lyr.GetNextFeature()
+    iter = 0
+    while feat:
+        if idfield is None:
+            id = feat.GetFID()
+        else:
+            id = feat.GetField(idfield)
+        tmpds = vector.createOGRDataSource('temp', 'Memory')
+        tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
+        tmplyr.CreateFeature(feat.Clone())
+        offsets = bboxToOffsets(feat.GetGeometryRef().GetEnvelope(), geot)
+        for i in range(0, len(offsets)):
+            if offsets[i] < 0:
+                offsets[i] = 0
+        if not any(x < 0 for x in offsets):
+            array = rasterds.GetRasterBand(1).ReadAsArray(offsets[2], offsets[0], (offsets[3]-offsets[2]),
+                                                          (offsets[1]-offsets[0]))
+            deltaarray = deltads.GetRasterBand(1).ReadAsArray(offsets[2], offsets[0], (offsets[3]-offsets[2]),
+                                                              (offsets[1]-offsets[0]))
+            newgeot = raster.getOffsetGeot(offsets[0], offsets[2], geot)
+            tmpras = raster.createGDALRaster('', offsets[1] - offsets[0], offsets[3] - offsets[2], datatype=gdal.GDT_Byte,
+                                             drivername='MEM', geot=newgeot)
+            if tmpras is not None and array is not None:
+                gdal.RasterizeLayer(tmpras, [1], tmplyr, burn_values=[1])
+                tmparray = tmpras.ReadAsArray()
+                if array.size == np.logical_or(array == nodata, np.logical_not(tmparray)).size:
+                    testmaskarray = np.ma.MaskedArray(array,
+                                                      mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
+                    testmean = np.ma.mean(testmaskarray)
+
+                    if testmean != nodata and deltaarray is not None:
+                        deltamaskarray = np.ma.MaskedArray(deltaarray,
+                                                           mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
+                        median = np.ma.median(deltamaskarray)
+                        diff = ((deltamaskarray - median) / deltamaskarray)
+                        maskarray = np.ma.MaskedArray(array, mask=np.logical_or(np.ma.getmask(deltamaskarray),
+                                                                                np.logical_or(np.logical_or(
+                                                                                    diff > deltamax,
+                                                                                    diff < deltamin),
+                                                                                              deltaarray < minvalue)))
+                        #print feat.GetFID(), maskarray.count(), maskarray.min(), maskarray.mean(), maskarray.max()
+
+                        zstats.append(setFeatureStats(id, min=float(maskarray.min()), mean=float(maskarray.mean()),
+                                                      max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
+                                                      median=float(np.ma.median(maskarray)), majority=float(stats.mode(maskarray, axis=None)[0][0]),
+                                                      deltamed=float((median*30*30)/1000000), count=maskarray.count()))
+                    else:
+                        #print "mean = nodata", nodata, testmaskarray
+                        zstats.append(setFeatureStats(id))
+                else:
+                    #print "array sizes not equal"
+                    zstats.append(setFeatureStats(id))
+            else:
+                #print "NoneType arrays"
+                zstats.append(setFeatureStats(id))
+
+        else:
+            print "out of bounds", feat.GetFID()
+            zstats.append(setFeatureStats(id))
+            outofbounds.append(feat.GetFID())
+        tmpras = None
+        tmpds = None
+        iter+=1
+        if (iter % 100000 == 0):
+            print "iter", iter, "of", lyr.GetFeatureCount()
+        feat = lyr.GetNextFeature()
+    return zstats
