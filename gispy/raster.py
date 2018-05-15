@@ -184,7 +184,7 @@ def getXYResolution(rasterPath):
     if geot is not None: return geot[1], geot[5]
     else: return None
 
-def greaterThan(valueRaster, compareRaster, outputraster, valuetrue=1, valuefalse=0):
+def greaterThan(valueRaster, compareValue, outputraster, valuetrue=1, valuefalse=0):
     """
 
     Args:
@@ -199,7 +199,7 @@ def greaterThan(valueRaster, compareRaster, outputraster, valuetrue=1, valuefals
     """
 
     values = getRasterBandAsArray(valueRaster, 1)
-    compare = getRasterBandAsArray(compareRaster, 1)
+    compare = getRasterBandAsArray(compareValue, 1)
     result = np.where(values > compare, valuetrue, valuefalse)
     resultMasked = maskArray(result, values, -9999)
     writeArrayAsRaster(outputraster, resultMasked, result.shape[0], result.shape[1], getGeoTransform(valueRaster),
@@ -279,6 +279,20 @@ def maskRaster(rasterPath, array, nodata=-9999, band=1):
     ds.GetRasterBand.SetNoDataValue(nodata)
     ds = None
     return None
+
+def maskRasterWithValues(inputraster, minvalue, maxvalue, method="include", band=1):
+    ds = openGDALRaster(inputraster, gdal.GA_Update)
+    banddata = ds.GetRasterBand(band).ReadAsArray()
+    nodata = ds.GetRasterBand(band).GetNoDataValue()
+    writedata = None
+    if method == "include":
+        writedata = np.where((banddata >= minvalue) & (banddata <= maxvalue), banddata, nodata)
+    elif method == "exclude":
+        writedata = np.where((banddata < minvalue) & (banddata > maxvalue), banddata, nodata)
+
+    if writedata is not None:
+        ds.GetRasterBand(band).WriteArray(writedata)
+    ds=None
 
 def maskRasterWithRaster(inputraster, maskraster, inputband=1, maskband=1):
     """

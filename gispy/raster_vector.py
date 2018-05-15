@@ -264,7 +264,7 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
     print "done"
     return None
 
-def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, sum=None, count=None, majority=None, deltamed=None):
+def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, sum=None, count=None, majority=None, deltamed=None, idname="fid"):
     featstats = {
         'min': min,
         'mean': mean,
@@ -274,7 +274,7 @@ def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, su
         'sum': sum,
         'count': count,
         'majority': majority,
-        'fid': fid,
+        idname: fid,
         'deltamed': deltamed
     }
     return featstats
@@ -404,28 +404,35 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatyp
     return zstats
 
 def zonalStatistics_rasterZones(rasterzones, rasterpath, indentifier="fid"):
+    print "loading zones"
     zones = raster.getRasterBandAsArray(rasterzones, 1)
+    print "loading values"
     rasterds = raster.openGDALRaster(rasterpath)
     rastervals = rasterds.GetRasterBand(1).ReadAsArray()
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
+    print "finding unique values"
     uvals = np.unique(zones)
     zstats = []
     iter = 0
+    print "starting loop", len(uvals)
     for uval in uvals:
-        if uval >= 0:
-            vals = rastervals[np.where(zones == uval)]
-            vals = vals[vals != nodata]
+        vals = rastervals[np.where(zones == uval)]
+        vals = vals[vals != nodata]
+        if vals.size > 0:
             zstats.append(setFeatureStats(uval, max=float(vals.max()), min=float(vals.min()),
                                           mean=float(vals.max()), sd=float(vals.std()),
                                           median=float(np.median(vals)),
                                           majority=float(stats.mode(vals, axis=None)[0][0]),
-                                          count=vals.size))
+                                          count=vals.size, idname=indentifier))
+        else:
+            # print "no values for zone", uval, iter
+            zstats.append(setFeatureStats(uval, idname=indentifier))
         iter += 1
-        if (iter % 10000 == 0):
+        if (iter % 100 == 0):
             print "iter", iter, "of", len(uvals)
     return zstats
 
-def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield=None, deltamax=None, deltamin=None, minvalue=0.0):
+def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield="fid", deltamax=None, deltamin=None, minvalue=0.0):
     """
     Zonal statistics using a second raster layer to exclude values from statistic calculations. Currently,
     This is implemented as follows. For each zone represented in vectorpath, the median of deltapath is identified.
@@ -453,7 +460,7 @@ def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield=N
     feat = lyr.GetNextFeature()
     iter = 0
     while feat:
-        if idfield is None:
+        if idfield is "fid" or idfield is "FID":
             id = feat.GetFID()
         else:
             id = feat.GetField(idfield)
@@ -495,16 +502,16 @@ def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield=N
                         zstats.append(setFeatureStats(id, min=float(maskarray.min()), mean=float(maskarray.mean()),
                                                       max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
                                                       median=float(np.ma.median(maskarray)), majority=float(stats.mode(maskarray, axis=None)[0][0]),
-                                                      deltamed=float((median*30*30)/1000000), count=maskarray.count()))
+                                                      deltamed=float((median*30*30)/1000000), count=maskarray.count(), idname=idfield))
                     else:
                         #print "mean = nodata", nodata, testmaskarray
-                        zstats.append(setFeatureStats(id))
+                        zstats.append(setFeatureStats(id, idname=idfield))
                 else:
                     #print "array sizes not equal"
-                    zstats.append(setFeatureStats(id))
+                    zstats.append(setFeatureStats(id, idname=idfield))
             else:
                 #print "NoneType arrays"
-                zstats.append(setFeatureStats(id))
+                zstats.append(setFeatureStats(id, idname=idfield))
 
         else:
             print "out of bounds", feat.GetFID()
@@ -513,7 +520,7 @@ def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield=N
         tmpras = None
         tmpds = None
         iter+=1
-        if (iter % 100000 == 0):
+        if (iter % 100 == 0):
             print "iter", iter, "of", lyr.GetFeatureCount()
         feat = lyr.GetNextFeature()
     return zstats
