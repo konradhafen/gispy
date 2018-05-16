@@ -503,7 +503,16 @@ def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield="
                                                       max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
                                                       median=float(np.ma.median(maskarray)), majority=float(stats.mode(maskarray, axis=None)[0][0]),
                                                       deltamed=float((median*30*30)/1000000), count=maskarray.count(), idname=idfield))
-                        if id==62:
+                        if id==394397:
+                            np.set_printoptions(suppress=True)
+                            print "buffer"
+                            print tmparray
+                            print "fac"
+                            print deltaarray
+                            print "diff"
+                            print diff
+                            "print values"
+                            print np.where((deltaarray > minvalue) & (tmparray == 1) & (diff > deltamin), deltaarray, 0)
                             print np.where((deltaarray > minvalue) & (diff < deltamax) & (diff > deltamin), deltaarray, 0)
                             print np.where((deltaarray > minvalue) & (diff < deltamax) & (diff > deltamin), diff, 0)
                             print id, "count", maskarray.count(), offsets
