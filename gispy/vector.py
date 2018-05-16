@@ -178,6 +178,8 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
                     else:
                         value = result[stats[i]]*1.0
                 if feat:
+                    if feat.GetFID()==62:
+                        print fieldnames[i], value, result[id]
                     feat.SetField(fieldnames[i], value)
             if feat:
                 lyr.SetFeature(feat)
