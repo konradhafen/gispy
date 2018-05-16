@@ -410,7 +410,7 @@ def zonalStatistics_rasterZones(rasterzones, rasterpath, indentifier="fid"):
     rasterds = raster.openGDALRaster(rasterpath)
     rastervals = rasterds.GetRasterBand(1).ReadAsArray()
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
-    print "finding unique values"
+    print "finding unique values, no data", nodata
     uvals = np.unique(zones)
     zstats = []
     iter = 0
@@ -491,7 +491,11 @@ def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield="
                         deltamaskarray = np.ma.MaskedArray(deltaarray,
                                                            mask=np.logical_or(array == nodata, np.logical_not(tmparray)))
                         median = np.ma.median(deltamaskarray)
-                        diff = ((deltamaskarray - median) / deltamaskarray)
+
+                        ########################################
+                        #Difference calculation here
+                        ########################################
+                        diff = ((deltamaskarray - median) / (deltamaskarray + median))
                         maskarray = np.ma.MaskedArray(array, mask=np.logical_or(np.ma.getmask(deltamaskarray),
                                                                                 np.logical_or(np.logical_or(
                                                                                     diff > deltamax,
@@ -503,7 +507,7 @@ def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield="
                                                       max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
                                                       median=float(np.ma.median(maskarray)), majority=float(stats.mode(maskarray, axis=None)[0][0]),
                                                       deltamed=float((median*30*30)/1000000), count=maskarray.count(), idname=idfield))
-                        if id==394397:
+                        if id==394303:
                             np.set_printoptions(suppress=True)
                             print "buffer"
                             print tmparray
@@ -511,8 +515,8 @@ def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield="
                             print deltaarray
                             print "diff"
                             print diff
-                            "print values"
-                            print np.where((deltaarray > minvalue) & (tmparray == 1) & (diff > deltamin), deltaarray, 0)
+                            print "values", deltamin, deltamax
+                            #print np.where((deltaarray > minvalue) & (tmparray == 1) & (diff > deltamin), deltaarray, 0)
                             print np.where((deltaarray > minvalue) & (diff < deltamax) & (diff > deltamin), deltaarray, 0)
                             print np.where((deltaarray > minvalue) & (diff < deltamax) & (diff > deltamin), diff, 0)
                             print id, "count", maskarray.count(), offsets
