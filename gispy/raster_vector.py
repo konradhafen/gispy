@@ -280,7 +280,7 @@ def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, su
     return featstats
 
 
-def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], prepend=None, idxfield=None):
+def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], prepend=None, idxfield="fid"):
     rasterds = raster.openGDALRaster(rasterpath)
     vectords = vector.openOGRDataSource(vectorpath)
     lyr = vectords.GetLayer()
@@ -289,6 +289,7 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
     zstats=[]
     feat = lyr.GetNextFeature()
+    iter = 0
     while feat:
         tmpds = vector.createOGRDataSource('temp', 'Memory')
         tmplyr = tmpds.CreateLayer('polygons', None, ogr.wkbPolygon)
@@ -300,18 +301,32 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
         tmparray = tmpras.ReadAsArray()
         maskarray = np.ma.MaskedArray(array[offsets[0]:offsets[1], offsets[2]:offsets[3]],
                                       mask=np.logical_or(array[offsets[0]:offsets[1], offsets[2]:offsets[3]]==nodata, np.logical_not(tmparray)))
-        featstats = {
-            'min' : float(maskarray.min()),
-            'mean': float(maskarray.mean()),
-            'max': float(maskarray.max()),
-            'sd': float(maskarray.std()),
-            'sum': float(maskarray.sum()),
-            'count': float(maskarray.count()),
-            'fid': float(feat.GetFID())
-        }
-        zstats.append(featstats)
+
+        if idxfield == "FID" or idxfield == "fid":
+            id = feat.GetFID()
+        else:
+            id = feat.GetField(idxfield)
+
+        # featstats = {
+        #     'min' : float(maskarray.min()),
+        #     'mean': float(maskarray.mean()),
+        #     'max': float(maskarray.max()),
+        #     'sd': float(maskarray.std()),
+        #     'sum': float(maskarray.sum()),
+        #     'count': float(maskarray.count()),
+        #     idxfield: float(id)
+        # }
+        # zstats.append(featstats)
+        zstats.append(setFeatureStats(id, min=float(maskarray.min()), mean=float(maskarray.mean()),
+                                      max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
+                                      median=float(np.ma.median(maskarray)),
+                                      majority=float(stats.mode(maskarray, axis=None)[0][0]),count=maskarray.count(),
+                                      idname=idxfield))
         tmpras = None
         tmpds = None
+        iter += 1
+        if (iter % 10000 == 0):
+            print "iter", iter, "of", lyr.GetFeatureCount()
         feat = lyr.GetNextFeature()
     return zstats
 
@@ -507,19 +522,19 @@ def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield="
                                                       max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
                                                       median=float(np.ma.median(maskarray)), majority=float(stats.mode(maskarray, axis=None)[0][0]),
                                                       deltamed=float((median*30*30)/1000000), count=maskarray.count(), idname=idfield))
-                        if id==394303:
-                            np.set_printoptions(suppress=True)
-                            print "buffer"
-                            print tmparray
-                            print "fac"
-                            print deltaarray
-                            print "diff"
-                            print diff
-                            print "values", deltamin, deltamax
-                            #print np.where((deltaarray > minvalue) & (tmparray == 1) & (diff > deltamin), deltaarray, 0)
-                            print np.where((deltaarray > minvalue) & (diff < deltamax) & (diff > deltamin), deltaarray, 0)
-                            print np.where((deltaarray > minvalue) & (diff < deltamax) & (diff > deltamin), diff, 0)
-                            print id, "count", maskarray.count(), offsets
+                        # if id==394303:
+                        #     np.set_printoptions(suppress=True)
+                        #     print "buffer"
+                        #     print tmparray
+                        #     print "fac"
+                        #     print deltaarray
+                        #     print "diff"
+                        #     print diff
+                        #     print "values", deltamin, deltamax
+                        #     #print np.where((deltaarray > minvalue) & (tmparray == 1) & (diff > deltamin), deltaarray, 0)
+                        #     print np.where((deltaarray > minvalue) & (diff < deltamax) & (diff > deltamin), deltaarray, 0)
+                        #     print np.where((deltaarray > minvalue) & (diff < deltamax) & (diff > deltamin), diff, 0)
+                        #     print id, "count", maskarray.count(), offsets
                     else:
                         #print "mean = nodata", nodata, testmaskarray
                         zstats.append(setFeatureStats(id, idname=idfield))
@@ -537,7 +552,7 @@ def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield="
         tmpras = None
         tmpds = None
         iter+=1
-        if (iter % 100 == 0):
+        if (iter % 10000 == 0):
             print "iter", iter, "of", lyr.GetFeatureCount()
         feat = lyr.GetNextFeature()
     return zstats
