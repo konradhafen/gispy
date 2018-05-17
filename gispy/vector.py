@@ -167,7 +167,7 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
     lyr = ds.GetLayer(0)
     lyr = createFields(lyr, fieldnames, stattype)
     print "fields created"
-    if id == "fid" or id =="FID":
+    if id == "fid" or id == "FID":
         for result in zsresult:
             feat = lyr.GetFeature(int(result[id]))
             for i in range(len(stats)):
@@ -189,9 +189,8 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
             featid = feat.GetField(id)
             result = next((item for item in zsresult if item[id] == int(featid)), None)
             for i in range(len(stats)):
-                value = result[stats[i]]
                 if stattype == ogr.OFTReal:
-                    if result[stats[i]] == None:
+                    if result == None or result[stats[i]] == None:
                         value = -9999.0
                     else:
                         value = result[stats[i]]*1.0

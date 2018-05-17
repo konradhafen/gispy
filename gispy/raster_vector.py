@@ -285,7 +285,7 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
     vectords = vector.openOGRDataSource(vectorpath)
     lyr = vectords.GetLayer()
     geot = rasterds.GetGeoTransform()
-    array = rasterds.ReadAsArray()
+    #array = rasterds.ReadAsArray()
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
     zstats=[]
     feat = lyr.GetNextFeature()
@@ -299,29 +299,35 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
         tmpras = raster.createGDALRaster('', offsets[1]-offsets[0], offsets[3]-offsets[2], datatype=gdal.GDT_Byte, drivername='MEM', geot=newgeot)
         gdal.RasterizeLayer(tmpras, [1], tmplyr, burn_values=[1])
         tmparray = tmpras.ReadAsArray()
-        maskarray = np.ma.MaskedArray(array[offsets[0]:offsets[1], offsets[2]:offsets[3]],
-                                      mask=np.logical_or(array[offsets[0]:offsets[1], offsets[2]:offsets[3]]==nodata, np.logical_not(tmparray)))
-
+        array = rasterds.GetRasterBand(1).ReadAsArray(offsets[2], offsets[0], (offsets[3] - offsets[2]),
+                                                      (offsets[1] - offsets[0]))
         if idxfield == "FID" or idxfield == "fid":
             id = feat.GetFID()
         else:
             id = feat.GetField(idxfield)
+        #if array.size == np.logical_or(array == nodata, np.logical_not(tmparray)).size:
+        if array is not None and np.logical_or(array == nodata, np.logical_not(tmparray)) is not None:
+            maskarray = np.ma.MaskedArray(array, mask=np.logical_or(array==nodata, np.logical_not(tmparray)))
 
-        # featstats = {
-        #     'min' : float(maskarray.min()),
-        #     'mean': float(maskarray.mean()),
-        #     'max': float(maskarray.max()),
-        #     'sd': float(maskarray.std()),
-        #     'sum': float(maskarray.sum()),
-        #     'count': float(maskarray.count()),
-        #     idxfield: float(id)
-        # }
-        # zstats.append(featstats)
-        zstats.append(setFeatureStats(id, min=float(maskarray.min()), mean=float(maskarray.mean()),
-                                      max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
-                                      median=float(np.ma.median(maskarray)),
-                                      majority=float(stats.mode(maskarray, axis=None)[0][0]),count=maskarray.count(),
-                                      idname=idxfield))
+
+
+            # featstats = {
+            #     'min' : float(maskarray.min()),
+            #     'mean': float(maskarray.mean()),
+            #     'max': float(maskarray.max()),
+            #     'sd': float(maskarray.std()),
+            #     'sum': float(maskarray.sum()),
+            #     'count': float(maskarray.count()),
+            #     idxfield: float(id)
+            # }
+            # zstats.append(featstats)
+            zstats.append(setFeatureStats(id, min=float(maskarray.min()), mean=float(maskarray.mean()),
+                                          max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
+                                          median=float(np.ma.median(maskarray)),
+                                          majority=float(stats.mode(maskarray, axis=None)[0][0]),count=maskarray.count(),
+                                          idname=idxfield))
+        else:
+            zstats.append(setFeatureStats(id, idname=idxfield))
         tmpras = None
         tmpds = None
         iter += 1
