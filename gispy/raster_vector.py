@@ -470,6 +470,7 @@ def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield="
     Returns:
 
     """
+    np.set_printoptions(suppress=True)
     rasterds = raster.openGDALRaster(rasterpath)
     deltads = raster.openGDALRaster(deltapath)
     vectords = vector.openOGRDataSource(vectorpath)
@@ -528,8 +529,11 @@ def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield="
                                                       max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
                                                       median=float(np.ma.median(maskarray)), majority=float(stats.mode(maskarray, axis=None)[0][0]),
                                                       deltamed=float((median*30*30)/1000000), count=maskarray.count(), idname=idfield))
-                        # if id==394303:
-                        #     np.set_printoptions(suppress=True)
+                        # if id==22877591:
+                        #     print "subtract"
+                        #     print deltamaskarray-median
+                        #     print "add"
+                        #     print deltamaskarray + median
                         #     print "buffer"
                         #     print tmparray
                         #     print "fac"
