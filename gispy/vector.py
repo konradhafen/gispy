@@ -199,7 +199,7 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
                 feat.SetField(fieldnames[i], value)
                 #print fieldnames[i], value, inshp
             iter += 1
-            if (iter % 10000 == 0):
+            if (iter % 100000 == 0):
                 print "joined", iter, "of", lyr.GetFeatureCount()
             lyr.SetFeature(feat)
             feat = lyr.GetNextFeature()
