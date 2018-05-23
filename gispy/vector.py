@@ -169,7 +169,10 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
     print "fields created"
     iter = 0
     if id == "fid" or id == "FID":
+        print "joining on FID"
         for result in zsresult:
+            # print result
+            # print(int(result[id]))
             feat = lyr.GetFeature(int(result[id]))
             for i in range(len(stats)):
                 value = result[stats[i]]
@@ -179,9 +182,10 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
                     else:
                         value = result[stats[i]]*1.0
                 if feat:
-                    if feat.GetFID()==62:
-                        print fieldnames[i], value, result[id]
-                    feat.SetField(fieldnames[i], value)
+                    # if feat.GetFID()==62:
+                    #     print fieldnames[i], value, result[id]
+                    if value != -9999.0:
+                        feat.SetField(fieldnames[i], value)
             if feat:
                 lyr.SetFeature(feat)
     else:

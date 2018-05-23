@@ -327,12 +327,13 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
                                               median=float(np.ma.median(maskarray)),
                                               majority=float(stats.mode(maskarray, axis=None)[0][0]),count=maskarray.count(),
                                               idname=idxfield))
+                # print zstats
             else:
                 zstats.append(setFeatureStats(id, min=snodata, mean=snodata, max=snodata, sum=snodata, sd=snodata,
-                                              median=snodata, majority=snodata, count=snodata, idname=snodata))
+                                              median=snodata, majority=snodata, count=snodata, idname=idxfield))
         else:
             zstats.append(setFeatureStats(id, min=snodata, mean=snodata, max=snodata, sum=snodata, sd=snodata,
-                                          median=snodata, majority=snodata, count=snodata, idname=snodata))
+                                          median=snodata, majority=snodata, count=snodata, idname=idxfield))
         tmpras = None
         tmpds = None
         iter += 1
