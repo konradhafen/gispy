@@ -280,12 +280,11 @@ def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, su
     return featstats
 
 
-def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], prepend=None, idxfield="fid", snodata=-9999.0):
+def zonalStatistics(vectorpath, rasterpath, idxfield="fid", snodata=-9999.0):
     rasterds = raster.openGDALRaster(rasterpath)
     vectords = vector.openOGRDataSource(vectorpath)
     lyr = vectords.GetLayer()
     geot = rasterds.GetGeoTransform()
-    #array = rasterds.ReadAsArray()
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
     zstats=[]
     feat = lyr.GetNextFeature()
@@ -306,22 +305,10 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
                 id = feat.GetFID()
             else:
                 id = feat.GetField(idxfield)
-            #if array.size == np.logical_or(array == nodata, np.logical_not(tmparray)).size:
+
             if array is not None and np.logical_or(array == nodata, np.logical_not(tmparray)) is not None:
                 maskarray = np.ma.MaskedArray(array, mask=np.logical_or(array==nodata, np.logical_not(tmparray)))
 
-
-
-                # featstats = {
-                #     'min' : float(maskarray.min()),
-                #     'mean': float(maskarray.mean()),
-                #     'max': float(maskarray.max()),
-                #     'sd': float(maskarray.std()),
-                #     'sum': float(maskarray.sum()),
-                #     'count': float(maskarray.count()),
-                #     idxfield: float(id)
-                # }
-                # zstats.append(featstats)
                 zstats.append(setFeatureStats(id, min=float(maskarray.min()), mean=float(maskarray.mean()),
                                               max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
                                               median=float(np.ma.median(maskarray)),
@@ -331,9 +318,6 @@ def zonalStatistics(vectorpath, rasterpath, write=['min', 'max', 'sd', 'mean'], 
             else:
                 zstats.append(setFeatureStats(id, min=snodata, mean=snodata, max=snodata, sum=snodata, sd=snodata,
                                               median=snodata, majority=snodata, count=snodata, idname=idxfield))
-        else:
-            zstats.append(setFeatureStats(id, min=snodata, mean=snodata, max=snodata, sum=snodata, sd=snodata,
-                                          median=snodata, majority=snodata, count=snodata, idname=idxfield))
         tmpras = None
         tmpds = None
         iter += 1

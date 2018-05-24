@@ -166,47 +166,51 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
     ds = ogr.Open(inshp, 1)
     lyr = ds.GetLayer(0)
     lyr = createFields(lyr, fieldnames, stattype)
-    print "fields created"
+    print "fields created", fieldnames
+    # layerDefinition = lyr.GetLayerDefn()
+    # for i in range(layerDefinition.GetFieldCount()):
+    #     print layerDefinition.GetFieldDefn(i).GetName()
     iter = 0
-    if id == "fid" or id == "FID":
-        print "joining on FID"
-        for result in zsresult:
-            # print result
-            # print(int(result[id]))
-            feat = lyr.GetFeature(int(result[id]))
-            for i in range(len(stats)):
-                value = result[stats[i]]
-                if stattype == ogr.OFTReal:
-                    if result[stats[i]] == None:
-                        value = -9999.0
-                    else:
-                        value = result[stats[i]]*1.0
-                if feat:
-                    # if feat.GetFID()==62:
-                    #     print fieldnames[i], value, result[id]
-                    if value != -9999.0:
-                        feat.SetField(fieldnames[i], value)
+    for result in zsresult:
+        # print result
+        # print(int(result[id]))
+        feat = lyr.GetFeature(int(result[id]))
+        for i in range(len(stats)):
+            value = result[stats[i]]
+            if stattype == ogr.OFTReal:
+                if result[stats[i]] == None:
+                    value = -9999.0
+                else:
+                    value = result[stats[i]]*1.0
             if feat:
-                lyr.SetFeature(feat)
-    else:
-        feat = lyr.GetNextFeature()
-        while feat:
-            featid = feat.GetField(id)
-            result = next((item for item in zsresult if item[id] == int(featid)), None)
-            #print result
-            for i in range(len(stats)):
-                if stattype == ogr.OFTReal:
-                    if result == None or result[stats[i]] == None:
-                        value = -9999.0
-                    else:
-                        value = result[stats[i]]*1.0
-                feat.SetField(fieldnames[i], value)
-                #print fieldnames[i], value, inshp
-            iter += 1
-            if (iter % 100000 == 0):
-                print "joined", iter, "of", lyr.GetFeatureCount()
+                # if feat.GetFID()==62:
+                #     print fieldnames[i], value, result[id]
+                if value != -9999.0:
+                    feat.SetField(fieldnames[i], value)
+        iter += 1
+        if (iter % 100000 == 0):
+            print "joined", iter, "of", lyr.GetFeatureCount()
+        if feat and value != -9999.0:
             lyr.SetFeature(feat)
-            feat = lyr.GetNextFeature()
+    # else:
+    #     feat = lyr.GetNextFeature()
+    #     while feat:
+    #         featid = feat.GetField(id)
+    #         result = next((item for item in zsresult if item[id] == int(featid)), None)
+    #         #print result
+    #         for i in range(len(stats)):
+    #             if stattype == ogr.OFTReal:
+    #                 if result == None or result[stats[i]] == None:
+    #                     value = -9999.0
+    #                 else:
+    #                     value = result[stats[i]]*1.0
+    #             feat.SetField(fieldnames[i], value)
+    #             #print fieldnames[i], value, inshp
+    #         iter += 1
+    #         if (iter % 100000 == 0):
+    #             print "joined", iter, "of", lyr.GetFeatureCount()
+    #         lyr.SetFeature(feat)
+    #         feat = lyr.GetNextFeature()
     ds.Destroy()
     return None
 
