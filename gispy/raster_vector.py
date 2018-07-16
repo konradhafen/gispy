@@ -15,7 +15,6 @@ def bboxToOffsets(bbox, geot):
     row2 = int((bbox[2] - geot[3]) / geot[5]) + 1
     return [row1, row2, col1, col2]
 
-
 def clipByFeature(inputdir, outputdir, rasterfiles, shapefile, fieldname, nodata=-9999, xres=None, yres=None):
     """
     Clip multiple rasters by features in a shapefile. Creates a new directory for each feature and saves clipped rasters in the directory
@@ -50,7 +49,6 @@ def clipByFeature(inputdir, outputdir, rasterfiles, shapefile, fieldname, nodata
                                       fieldValue=value, field=fieldname)
     return None
 
-
 def clipRasterWithPolygon(rasterpath, polygonpath, outputpath, nodata=-9999, xres=None, yres=None, field=None, fieldValue=None):
     """
 
@@ -75,7 +73,6 @@ def clipRasterWithPolygon(rasterpath, polygonpath, outputpath, nodata=-9999, xre
     gdal.WarpOptions()
     gdal.Warp(outputpath, rasterpath, options=warpOptions)
     return None
-
 
 def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj=None, drivername='GTiff', allcells=False, nodata=-9999, datatype = gdal.GDT_Float32, islayer=False):
     """
@@ -126,7 +123,6 @@ def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj=Non
     outds = None
     return None
 
-
 def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTReal, idxfield=None):
     """
     Get the value of a raster at point locations.
@@ -145,9 +141,9 @@ def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTR
     geot = ras.GetGeoTransform()
     shp = vector.openOGRDataSource(pointshapefile, 1)
     lyr = shp.GetLayer()
-    if lyr.GetGeomType() is not ogr.wkbPoint:
-        print "incorrect geometry type, should be points", lyr.GetGeomType()
-        return None
+    # if lyr.GetGeomType() is not ogr.wkbPoint:
+    #     print "incorrect geometry type, should be points", lyr.GetGeomType()
+    #     return None
     vector.createFields(lyr, [fieldname], datatype)
     feat = lyr.GetNextFeature()
     while feat:
@@ -279,7 +275,6 @@ def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, su
     }
     return featstats
 
-
 def zonalStatistics(vectorpath, rasterpath, idxfield="fid", snodata=-9999.0):
     rasterds = raster.openGDALRaster(rasterpath)
     vectords = vector.openOGRDataSource(vectorpath)
@@ -325,7 +320,6 @@ def zonalStatistics(vectorpath, rasterpath, idxfield="fid", snodata=-9999.0):
             print "iter", iter, "of", lyr.GetFeatureCount()
         feat = lyr.GetNextFeature()
     return zstats
-
 
 def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatype='percent', minvalue=0.0):
     """

@@ -72,7 +72,6 @@ def createIDField(inshp, fname = "ID"):
     ds.Destroy()
     return None
 
-
 def createOGRDataSource(filename, driver='ESRI Shapefile'):
     """
     Create OGRDataSource

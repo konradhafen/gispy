@@ -336,7 +336,6 @@ def percentileForAllBands(multipath, outpath, maskpath=None):
         for i in range(outmulti.shape[0]):
             maskRasterWithRaster(outpath, maskpath, i+1, 1)
 
-
 def percentileMultiband(multi, index):
     """
     Calculate the percentile of a specified value at a position in a multiband raster.
