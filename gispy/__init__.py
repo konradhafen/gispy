@@ -1,3 +1,3 @@
-from gispy.raster import *
-from gispy.vector import *
-from gispy.raster_vector import *
+import gispy.raster
+import gispy.vector
+import gispy.raster_vector
