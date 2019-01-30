@@ -402,23 +402,29 @@ def remapValues(inpath, outpath, remap_values, new_values, nodata = -9999.0, ban
 
     """
     ds = openGDALRaster(inpath)
-    print('raster opened')
     values = ds.GetRasterBand(band).ReadAsArray()
-    print('band data retrieved')
     result = replaceValues(values, remap_values, new_values, nodata)
-    print('values replaced')
     writeArrayAsRaster(outpath, result, ds.RasterYSize, ds.RasterXSize, ds.GetGeoTransform(), ds.GetProjection(), nodata=nodata)
-    print('new raster created')
 
 def replaceValues(array, remap_values, new_values, nodata=-9999.0):
-    flat = array.flatten()
-    isort = np.argsort(remap_values)
-    i = np.searchsorted(remap_values[isort], flat)
-    output = new_values[isort][i]
+    """
+    Replaces specified values in an array with new values. nodata values will remain nodata values.
+    Args:
+        array: input array
+        remap_values: values to replace/remap
+        new_values: values to replace remap_values
+        nodata: nodata value
+
+    Returns:
+        remapped numpy array with same dimensions of `array`
+
+    """
+    flat = array.flatten()  # flatten to 1d array
+    isort = np.argsort(remap_values)  # get sorted indices
+    i = np.searchsorted(remap_values[isort], flat)   # get indices where remap values occur in original raster
+    output = new_values[isort][i]  # replace with new values
     output = np.where(flat == nodata, nodata, output)
     output = np.reshape(output, array.shape)
-    print(array.shape)
-    print(output.shape)
     return output
 
 def writeArrayAsRaster(path, array, rows, cols, geot, srs, nodata=-9999, nan=-9999, datatype=gdal.GDT_Float32, drivername = 'GTiff'):
