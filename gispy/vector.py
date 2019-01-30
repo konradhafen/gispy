@@ -68,7 +68,7 @@ def createIDField(inshp, fname = "ID"):
         lyr.SetFeature(feat)
         feat = lyr.GetNextFeature()
         if fid % 50000 == 0:
-            print fid
+            print(fid)
     ds.Destroy()
     return None
 
@@ -161,11 +161,11 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
         None
 
     """
-    print "starting join"
+    print("starting join")
     ds = ogr.Open(inshp, 1)
     lyr = ds.GetLayer(0)
     lyr = createFields(lyr, fieldnames, stattype)
-    print "fields created", fieldnames
+    print("fields created", fieldnames)
     # layerDefinition = lyr.GetLayerDefn()
     # for i in range(layerDefinition.GetFieldCount()):
     #     print layerDefinition.GetFieldDefn(i).GetName()
@@ -188,7 +188,7 @@ def joinZonalStatsToSHP(inshp, zsresult, id, stats, fieldnames, stattype=ogr.OFT
                     feat.SetField(fieldnames[i], value)
         iter += 1
         if (iter % 100000 == 0):
-            print "joined", iter, "of", lyr.GetFeatureCount()
+            print("joined", iter, "of", lyr.GetFeatureCount())
         if feat and value != -9999.0:
             lyr.SetFeature(feat)
     # else:
@@ -274,7 +274,7 @@ def openOGRDataSource(file, access=0):
     if ds is not None:
         return ds
     else:
-        print 'Problem opening shapefile'
+        print('Problem opening shapefile')
 
 def reprojectShapefileLayer(shapefile, newshapefile, newsrs):
     """

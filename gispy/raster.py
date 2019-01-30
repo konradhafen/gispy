@@ -232,10 +232,10 @@ def linearTakeBand(values, band_indices):
     Get 2d array of band values from a multiband raster of shape (bands, rows, columns)
     Args:
         values: input 3d array containing data values
-        indices: 2d array containing indices to bands in the value raster
+        band_indices: 2d array containing indices to bands in the value raster
 
     Returns:
-        2d array where the value in the array corresponds the band value from indices
+        2d array where the value in the array corresponds the band value from band_indices
 
     """
     _, nR, nC = values.shape
@@ -256,7 +256,7 @@ def maskArray(array, mask, nodata=-9999):
 
     """
     if array.shape != mask.shape:
-        print "error masking array: array shapes are different", array.shape, mask.shape
+        print("error masking array: array shapes are different", array.shape, mask.shape)
     return np.where(mask, array, nodata)
 
 def maskRaster(rasterPath, array, nodata=-9999, band=1):
@@ -312,7 +312,7 @@ def maskRasterWithRaster(inputraster, maskraster, inputband=1, maskband=1):
     band = ds.GetRasterBand(inputband).ReadAsArray()
     maskarray = dsmask.GetRasterBand(maskband).ReadAsArray()
     nodata = dsmask.GetRasterBand(maskband).GetNoDataValue()
-    print nodata
+    print(nodata)
     ds.GetRasterBand(inputband).WriteArray(maskArray(band, np.where(maskarray==nodata, 0, 1), nodata))
     ds.GetRasterBand(inputband).SetNoDataValue(nodata)
     ds = None
@@ -383,9 +383,43 @@ def percentileOfMultibandIndex(datapath, index, percentilepath, scorepath=None, 
                               geot=ds.GetGeoTransform(), srs=ds.GetProjection())
         ds = None
     else:
-        print "problem with input index array", index.shape, multi.shape[1:]
+        print("problem with input index array", index.shape, multi.shape[1:])
 
     return None
+
+def remapValues(inpath, outpath, remap_values, new_values, nodata = -9999.0, band = 1):
+    """
+    Remap values in a raster, writes a new raster
+    Args:
+        inpath: path to input raster
+        outpath: path to write output raster
+        replace_values: values to replace
+        new_values: values to write, must correspond to replace_values
+        nodata: no data value (default: -9999)
+        band: raster band to use (default: 1)
+
+    Returns:
+
+    """
+    ds = openGDALRaster(inpath)
+    print('raster opened')
+    values = ds.GetRasterBand(band).ReadAsArray()
+    print('band data retrieved')
+    result = replaceValues(values, remap_values, new_values, nodata)
+    print('values replaced')
+    writeArrayAsRaster(outpath, result, ds.RasterYSize, ds.RasterXSize, ds.GetGeoTransform(), ds.GetProjection(), nodata=nodata)
+    print('new raster created')
+
+def replaceValues(array, remap_values, new_values, nodata=-9999.0):
+    flat = array.flatten()
+    isort = np.argsort(remap_values)
+    i = np.searchsorted(remap_values[isort], flat)
+    output = new_values[isort][i]
+    output = np.where(flat == nodata, nodata, output)
+    output = np.reshape(output, array.shape)
+    print(array.shape)
+    print(output.shape)
+    return output
 
 def writeArrayAsRaster(path, array, rows, cols, geot, srs, nodata=-9999, nan=-9999, datatype=gdal.GDT_Float32, drivername = 'GTiff'):
     """
@@ -418,7 +452,7 @@ def writeArrayAsRaster(path, array, rows, cols, geot, srs, nodata=-9999, nan=-99
     ds.SetGeoTransform(geot)
     array = np.where((array==np.nan) | (array==nan), nodata, array)
     for band in range(bands):
-        print 'writing band', band+1, 'of', bands
+        print('writing band', band+1, 'of', bands)
         if multi:
             ds.GetRasterBand(band+1).WriteArray(array[band,:,:])
         else:

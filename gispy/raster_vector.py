@@ -4,8 +4,8 @@ from scipy import stats
 import math
 import struct
 import os
-import raster
-import vector
+import gispy.raster as raster
+import gispy.vector as vector
 
 
 def bboxToOffsets(bbox, geot):
@@ -115,9 +115,9 @@ def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj=Non
     if vector.fieldExists(lyr, fieldname):
         status = gdal.RasterizeLayer(outds, [1], lyr, options=['ALL_TOUCHED='+ALL_TOUCHED, 'ATTRIBUTE='+fieldname, 'NODATA='+str(nodata)])
         if status is not 0:
-            print "Rasterize not successful"
+            print("Rasterize not successful")
     else:
-        print "Rasterize field does not exist"
+        print("Rasterize field does not exist")
 
     if inds: inds = None
     outds = None
@@ -165,11 +165,11 @@ def rasterValueAtPoints(pointshapefile, rasterpath, fieldname, datatype=ogr.OFTR
     shp.Destroy()
 
 def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=10000.0, deltatype='percent', minvalue = 0.0, outdiff=None):
-    print deltavalue, minvalue
+    print(deltavalue, minvalue)
     np.set_printoptions(suppress=True)
     rasterds = raster.openGDALRaster(rasterpath)
     vectords = vector.openOGRDataSource(vectorpath)
-    print "data opened"
+    print("data opened")
     lyr = vectords.GetLayer()
     geot = rasterds.GetGeoTransform()
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
@@ -180,15 +180,15 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
                                         datatype=gdal.GDT_Float32)
         diffds.GetRasterBand(1).SetNoDataValue(-9999.0)
         diffds.SetProjection(rasterds.GetProjection())
-    print "datacreated"
+    print("datacreated")
     #outds.GetRasterBand(1).Fill(-1)
-    print "filled"
+    print("filled")
     outds.GetRasterBand(1).SetNoDataValue(-1)
     outds.SetProjection(rasterds.GetProjection())
     outofbounds = []
     feat = lyr.GetNextFeature()
     iter = 0
-    print "starting loop"
+    print("starting loop")
     while feat:
         id = feat.GetFID()
         tmpds = vector.createOGRDataSource('temp', 'Memory')
@@ -218,13 +218,13 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
                 median = np.ma.median(featarray)
                 #diff = (abs(featarray - median) / median) * 100.0
                 diff = np.divide((featarray - median), array)
-                print "diff", np.min(diff)
+                print("diff", np.min(diff))
                 # diff = (abs(featarray - featmean) / featmean) * 100.0
 
                 maskarray = np.ma.MaskedArray(array,
                                               mask=np.logical_or(np.ma.getmask(featarray),
                                                                  np.logical_or(diff > deltavalue, array < minvalue)))
-                print "mask", np.min(featarray), np.min(array[array >= 125])
+                print("mask", np.min(featarray), np.min(array[array >= 125]))
                 maskarray.set_fill_value(-1)
                 maskarray = maskarray.filled()
                 maskarray = np.where(maskarray>=0, id, np.where(outarray>=0, outarray, maskarray))
@@ -248,16 +248,16 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
                     diffds.GetRasterBand(1).WriteArray(diff, offsets[2], offsets[0])
 
         else:
-            print "out of bounds", feat.GetFID()
+            print("out of bounds", feat.GetFID())
             outofbounds.append(feat.GetFID())
         tmpras = None
         tmpds = None
         iter += 1
         if (iter % 10000 == 0):
-            print "iter", iter, "of", lyr.GetFeatureCount()
+            print("iter", iter, "of", lyr.GetFeatureCount())
         feat = lyr.GetNextFeature()
     #outds = None
-    print "done"
+    print("done")
     return None
 
 def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, sum=None, count=None, majority=None, deltamed=None, idname="fid"):
@@ -317,7 +317,7 @@ def zonalStatistics(vectorpath, rasterpath, idxfield="fid", snodata=-9999.0):
         tmpds = None
         iter += 1
         if (iter % 100000 == 0):
-            print "iter", iter, "of", lyr.GetFeatureCount()
+            print("iter", iter, "of", lyr.GetFeatureCount())
         feat = lyr.GetNextFeature()
     return zstats
 
@@ -397,29 +397,29 @@ def zonalStatisticsDelta(vectorpath, rasterpath, deltapath, deltavalue, deltatyp
                 zstats.append(setFeatureStats(feat.GetFID()))
 
         else:
-            print "out of bounds", feat.GetFID()
+            print("out of bounds", feat.GetFID())
             zstats.append(setFeatureStats(feat.GetFID()))
             outofbounds.append(feat.GetFID())
         tmpras = None
         tmpds = None
         iter+=1
         if (iter % 100000 == 0):
-            print "iter", iter, "of", lyr.GetFeatureCount()
+            print("iter", iter, "of", lyr.GetFeatureCount())
         feat = lyr.GetNextFeature()
     return zstats
 
 def zonalStatistics_rasterZones(rasterzones, rasterpath, indentifier="fid"):
-    print "loading zones"
+    print("loading zones")
     zones = raster.getRasterBandAsArray(rasterzones, 1)
-    print "loading values"
+    print("loading values")
     rasterds = raster.openGDALRaster(rasterpath)
     rastervals = rasterds.GetRasterBand(1).ReadAsArray()
     nodata = rasterds.GetRasterBand(1).GetNoDataValue()
-    print "finding unique values, no data", nodata
+    print("finding unique values, no data", nodata)
     uvals = np.unique(zones)
     zstats = []
     iter = 0
-    print "starting loop", len(uvals)
+    print("starting loop", len(uvals))
     for uval in uvals:
         vals = rastervals[np.where(zones == uval)]
         vals = vals[vals != nodata]
@@ -434,7 +434,7 @@ def zonalStatistics_rasterZones(rasterzones, rasterpath, indentifier="fid"):
             zstats.append(setFeatureStats(uval, idname=indentifier))
         iter += 1
         if (iter % 100 == 0):
-            print "iter", iter, "of", len(uvals)
+            print("iter", iter, "of", len(uvals))
     return zstats
 
 def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield="fid", deltamax=None, deltamin=None, minvalue=0.0):
@@ -540,13 +540,13 @@ def zonalStatisticsDelta_methodtest(vectorpath, rasterpath, deltapath, idfield="
                 zstats.append(setFeatureStats(id, idname=idfield))
 
         else:
-            print "out of bounds", feat.GetFID()
+            print("out of bounds", feat.GetFID())
             zstats.append(setFeatureStats(id))
             outofbounds.append(feat.GetFID())
         tmpras = None
         tmpds = None
         iter+=1
         if (iter % 10000 == 0):
-            print "iter", iter, "of", lyr.GetFeatureCount()
+            print("iter", iter, "of", lyr.GetFeatureCount())
         feat = lyr.GetNextFeature()
     return zstats
