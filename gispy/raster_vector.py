@@ -49,7 +49,9 @@ def clipByFeature(inputdir, outputdir, rasterfiles, shapefile, fieldname, nodata
                                       fieldValue=value, field=fieldname)
     return None
 
-def clipRasterWithPolygon(rasterpath, polygonpath, outputpath, nodata=-9999, xres=None, yres=None, field=None, fieldValue=None):
+
+def clipRasterWithPolygon(rasterpath, polygonpath, outputpath, nodata=-9999, dstSrs=None, xres=None, yres=None,
+                          field=None, fieldValue=None):
     """
 
     Args:
@@ -57,10 +59,11 @@ def clipRasterWithPolygon(rasterpath, polygonpath, outputpath, nodata=-9999, xre
         polygonpath: shapefile containing features to clip with
         outputpath: path of output clipped raster
         nodata: nodata value (default: -9999)
+        dstSrs: spatial reference for output raster if different than input raster (default: None)
         xres: x resolution of output raster (default: None, resolution of input raster)
         yres: y resolution of output raster (default: None, resolution of input raster)
-        field: name of shapefile field to select features and name directories
-        fieldValue: list of unique values for input field
+        field: name of shapefile field to select feature for clipping
+        fieldValue: field values to specify the clipping feature
 
     Returns:
 
@@ -69,12 +72,14 @@ def clipRasterWithPolygon(rasterpath, polygonpath, outputpath, nodata=-9999, xre
     if field is not None and fieldValue is not None: wexp = str(field) + " = \'" + str(fieldValue) + "\'"
     else: wexp = None
 
-    warpOptions = gdal.WarpOptions(format='GTiff', cutlineDSName=polygonpath, cropToCutline=True, cutlineWhere=wexp, xRes=xres, yRes=abs(yres), dstNodata=nodata)
+    warpOptions = gdal.WarpOptions(format='GTiff', cutlineDSName=polygonpath, cropToCutline=True, cutlineWhere=wexp,
+                                   xRes=xres, yRes=abs(yres), dstNodata=nodata)
     gdal.WarpOptions()
     gdal.Warp(outputpath, rasterpath, options=warpOptions)
     return None
 
-def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj=None, drivername='GTiff', allcells=False, nodata=-9999, datatype = gdal.GDT_Float32, islayer=False):
+def polygonToRaster(rasterpath, vectorpath, fieldname, rows, cols, geot, prj=None, drivername='GTiff', allcells=False,
+                    nodata=-9999, datatype = gdal.GDT_Float32, islayer=False):
     """
     Convert polygon shapefile to raster dataset.
 

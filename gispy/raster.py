@@ -66,6 +66,29 @@ def createMask(rasterPath, minValue, maxValue, band=1):
     array = getRasterBandAsArray(rasterPath, band)
     return np.where((array < minValue) | (array > maxValue), 0, 1)
 
+def getBoundingBox(rasterPath):
+    rows, cols, geot = getGeoTransformAndSize(rasterPath)
+    if not any(i is None for i in [rows, cols, geot]):
+        return getBoundingBox(geot, rows, cols)
+    else:
+        return None
+
+def getBoundingBox(geot, nrow, ncol):
+    """
+    Returns bounding box coordinates as a tuple of (minX, minY, maxX, maxY)
+    Args:
+        geot: gdal affine geotransform for rater
+        nrow: number of rows
+        ncol: number of columns
+
+    Returns:
+        bounding box coordinates as a tuple of (minX, minY, maxX, maxY)
+
+    """
+    r = geot[0] + ncol * geot[1]
+    b = geot[3] + nrow * geot[5]
+    return (geot[0], b, r, geot[3])
+
 def getCellAddressOfPoint(x, y, geot):
     col = math.floor((x - geot[0]) / geot[1])
     row = math.floor((geot[3] - y) / abs(geot[5]))
