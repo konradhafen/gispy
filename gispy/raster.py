@@ -12,6 +12,30 @@ def addressOfCoordinates(x, y, geot):
     row = np.floor(np.divide(np.subtract(geot[3], y), abs(geot[5])))
     return row, col
 
+def clipRasterBoundingBox(rasterpath, outputpath, bbox, bboxSrs=None, nodata=-9999, dstSrs=None, xres=None, yres=None):
+    """
+    Clip raster to coordinates of a bounding box.
+    Args:
+        rasterpath: raster to clip
+        outputpath: path of output clipped raster
+        bbox: extent of output raster (minX, minY, maxX, maxY)
+        bboxSrs: SRS in which bbox coordinates are expressed, if different than SRS of input raster (default: None)
+        nodata: nodata value (default: -9999)
+        dstSrs: spatial reference for output raster, if different than input raster (default: None)
+        xres: x resolution of output raster (default: None, resolution of input raster)
+        yres: y resolution of output raster (default: None, resolution of input raster)
+
+    Returns:
+
+    """
+    if xres is None or yres is None: xres, yres = getXYResolution(rasterpath)
+
+    warpOptions = gdal.WarpOptions(format='GTiff', outputBounds=bbox, outputBoundsSRS=bboxSrs, xRes=xres,
+                                   yRes=abs(yres), dstNodata=nodata)
+    gdal.WarpOptions()
+    gdal.Warp(outputpath, rasterpath, options=warpOptions)
+    return None
+
 def coordinatesOfAddress(row, col, geot):
     x = np.add(np.add(geot[0], np.multiply(col, geot[1])), 0.5*geot[1])
     y = np.add(np.add(geot[3], np.multiply(row, geot[5])), 0.5*geot[5])
@@ -90,6 +114,16 @@ def getBoundingBox(geot, nrow, ncol):
     return (geot[0], b, r, geot[3])
 
 def getCellAddressOfPoint(x, y, geot):
+    """
+
+    Args:
+        x:
+        y:
+        geot:
+
+    Returns:
+
+    """
     col = math.floor((x - geot[0]) / geot[1])
     row = math.floor((geot[3] - y) / abs(geot[5]))
     return (row, col)
@@ -410,7 +444,7 @@ def percentileOfMultibandIndex(datapath, index, percentilepath, scorepath=None, 
 
     return None
 
-def remapValues(inpath, outpath, remap_values, new_values, nodata = -9999.0, band = 1):
+def remapValues(inpath, outpath, remap_values, new_values, nodata = -9999.0, band = 1, proj=None):
     """
     Remap values in a raster, writes a new raster
     Args:
@@ -420,6 +454,7 @@ def remapValues(inpath, outpath, remap_values, new_values, nodata = -9999.0, ban
         new_values: values to write, must correspond to replace_values
         nodata: no data value (default: -9999)
         band: raster band to use (default: 1)
+        proj: projection for new raster
 
     Returns:
 
@@ -427,7 +462,9 @@ def remapValues(inpath, outpath, remap_values, new_values, nodata = -9999.0, ban
     ds = openGDALRaster(inpath)
     values = ds.GetRasterBand(band).ReadAsArray()
     result = replaceValues(values, remap_values, new_values, nodata)
-    writeArrayAsRaster(outpath, result, ds.RasterYSize, ds.RasterXSize, ds.GetGeoTransform(), ds.GetProjection(), nodata=nodata)
+    if proj is None:
+        proj = ds.GetProjection()
+    writeArrayAsRaster(outpath, result, ds.RasterYSize, ds.RasterXSize, ds.GetGeoTransform(), proj, nodata=nodata)
 
 def replaceValues(array, remap_values, new_values, nodata=-9999.0):
     """

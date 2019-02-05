@@ -1,5 +1,7 @@
 from osgeo import gdal, ogr, osr
 import os
+import pysal as ps
+import pandas as pd
 
 def vector_test():
     return "this is the vector module of the gispy package"
@@ -88,6 +90,22 @@ def createOGRDataSource(filename, driver='ESRI Shapefile'):
         driver.DeleteDataSource(filename)
     ds = driver.CreateDataSource(filename)
     return ds
+
+def dbf2DF(dbfile):
+    """
+    Converts DBF file to pandas data frame. From: https://gist.github.com/mhweber/a2d5863fcc4d52376481
+
+    Args:
+        dbfile: path to DBF file
+
+    Returns:
+        pandas data frame
+
+    """
+    dbf = ps.lib.io.open(dbfile)
+    dbf_dict = {col: dbf.by_col(col) for col in dbf.header} # convert dbf to dictionary
+    df = pd.DataFrame(dbf_dict)
+    return df
 
 def deleteFields(filename, fields):
     """
