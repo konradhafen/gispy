@@ -12,7 +12,8 @@ def addressOfCoordinates(x, y, geot):
     row = np.floor(np.divide(np.subtract(geot[3], y), abs(geot[5])))
     return row, col
 
-def clipRasterBoundingBox(rasterpath, outputpath, bbox, bboxSrs=None, nodata=-9999, dstSrs=None, xres=None, yres=None):
+def clipRasterBoundingBox(rasterpath, outputpath, bbox, bboxSrs=None, nodata=-9999, dstSrs=None, xres=None, yres=None,
+                          resample=None):
     """
     Clip raster to coordinates of a bounding box.
     Args:
@@ -24,14 +25,16 @@ def clipRasterBoundingBox(rasterpath, outputpath, bbox, bboxSrs=None, nodata=-99
         dstSrs: spatial reference for output raster, if different than input raster (default: None)
         xres: x resolution of output raster (default: None, resolution of input raster)
         yres: y resolution of output raster (default: None, resolution of input raster)
+        resample: resampling algorithm. Example: gdal.GRA_Bilinear (default: None i.e. gdal.GRA_NearestNeighbor)
 
     Returns:
 
     """
     if xres is None or yres is None: xres, yres = getXYResolution(rasterpath)
 
+    # to change resample algorithm gdal.GRA_Bilinear
     warpOptions = gdal.WarpOptions(format='GTiff', outputBounds=bbox, outputBoundsSRS=bboxSrs, xRes=xres,
-                                   yRes=abs(yres), dstSRS=dstSrs, dstNodata=nodata)
+                                   yRes=abs(yres), dstSRS=dstSrs, dstNodata=nodata, resampleAlg=resample)
     gdal.WarpOptions()
     gdal.Warp(outputpath, rasterpath, options=warpOptions)
     return None
