@@ -31,7 +31,7 @@ def clipRasterBoundingBox(rasterpath, outputpath, bbox, bboxSrs=None, nodata=-99
     if xres is None or yres is None: xres, yres = getXYResolution(rasterpath)
 
     warpOptions = gdal.WarpOptions(format='GTiff', outputBounds=bbox, outputBoundsSRS=bboxSrs, xRes=xres,
-                                   yRes=abs(yres), dstNodata=nodata)
+                                   yRes=abs(yres), dstSRS=dstSrs, dstNodata=nodata)
     gdal.WarpOptions()
     gdal.Warp(outputpath, rasterpath, options=warpOptions)
     return None
@@ -93,11 +93,11 @@ def createMask(rasterPath, minValue, maxValue, band=1):
 def getBoundingBox(rasterPath):
     rows, cols, geot = getGeoTransformAndSize(rasterPath)
     if not any(i is None for i in [rows, cols, geot]):
-        return getBoundingBox(geot, rows, cols)
+        return getBoundingBox_geot(geot, rows, cols)
     else:
         return None
 
-def getBoundingBox(geot, nrow, ncol):
+def getBoundingBox_geot(geot, nrow, ncol):
     """
     Returns bounding box coordinates as a tuple of (minX, minY, maxX, maxY)
     Args:

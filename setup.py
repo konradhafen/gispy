@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name='gispy',
-      version='0.0.7',
+      version='0.0.8',
       description='GIS functions with GDAL/OGR',
       long_description=readme(),
       classifiers=[
