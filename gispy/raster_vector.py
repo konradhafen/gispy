@@ -265,22 +265,25 @@ def rasterZonesFromVector_delta(vectorpath, rasterpath, outputpath, deltavalue=1
     print("done")
     return None
 
-def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, sum=None, count=None, majority=None, deltamed=None, idname="fid"):
+def setFeatureStats(fid, min=None, max=None, sd=None, mean=None, median=None, sum=None, count=None, majority=None,
+                    deltamed=None, names=['min', 'mean', 'median', 'max', 'sd', 'sum', 'count', 'majority', 'fid', 'deltamed']):
     featstats = {
-        'min': min,
-        'mean': mean,
-        'median': median,
-        'max': max,
-        'sd': sd,
-        'sum': sum,
-        'count': count,
-        'majority': majority,
-        idname: fid,
-        'deltamed': deltamed
+        names[0]: min,
+        names[1]: mean,
+        names[2]: median,
+        names[3]: max,
+        names[4]: sd,
+        names[5]: sum,
+        names[6]: count,
+        names[7]: majority,
+        names[8]: fid,
+        names[9]: deltamed
     }
     return featstats
 
-def zonalStatistics(vectorpath, rasterpath, idxfield="fid", snodata=-9999.0):
+def zonalStatistics(vectorpath, rasterpath, idxfield="fid", snodata=-9999.0,
+                    names=['min', 'mean', 'median', 'max', 'sd', 'sum', 'count', 'majority', 'fid', 'deltamed']):
+    names[8] = idxfield
     rasterds = raster.openGDALRaster(rasterpath)
     vectords = vector.openOGRDataSource(vectorpath)
     lyr = vectords.GetLayer()
@@ -313,11 +316,11 @@ def zonalStatistics(vectorpath, rasterpath, idxfield="fid", snodata=-9999.0):
                                               max=float(maskarray.max()), sum=float(maskarray.sum()), sd=float(maskarray.std()),
                                               median=float(np.ma.median(maskarray)),
                                               majority=float(stats.mode(maskarray, axis=None)[0][0]),count=maskarray.count(),
-                                              idname=idxfield))
+                                              names=names))
                 # print zstats
             else:
                 zstats.append(setFeatureStats(id, min=snodata, mean=snodata, max=snodata, sum=snodata, sd=snodata,
-                                              median=snodata, majority=snodata, count=snodata, idname=idxfield))
+                                              median=snodata, majority=snodata, count=snodata, names=names))
         tmpras = None
         tmpds = None
         iter += 1
